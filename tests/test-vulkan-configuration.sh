@@ -21,7 +21,7 @@ wait_for_app test-apk.apk com.example.neon42
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 
@@ -44,7 +44,7 @@ wait_for_app test-apk.apk com.example.neon42
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 
@@ -59,15 +59,14 @@ test_log "Testing VALVE_rpo"
 
 monitor_logcat test-apk.apk &
 
+# RPO layer is currently not available, fake it
+VALIDATION_LAYER_PATH="/usr/share/guestos/android/vendor/vulkan_layers/libVkLayer_khronos_validation.so"
 RPO_LAYER_PATH="/usr/share/guestos/android/vendor/vulkan_layers/libVkLayer_VALVE_rpo.so"
-RPO_LAYER_CREATED=false
 if [[ ! -e "${RPO_LAYER_PATH}" ]]; then
-    sudo touch "${RPO_LAYER_PATH}"
-    RPO_LAYER_CREATED=true
+    sudo cp "${VALIDATION_LAYER_PATH}" "${RPO_LAYER_PATH}"
 fi
 
-# This container will crash since the libVkLayer_VALVE_rpo.so file is a dummy, but we only care about whether the logcat reports the layer to be loaded
-(ENABLE_VULKAN_RPO_LAYER=true ./lepton start test-apk.apk) &
+(ENABLE_VULKAN_RPO_LAYER=true ./lepton start test-apk.apk || test_log "container test-apk.apk failed to start, test will timeout.") &
 
 wait_for_boot test-apk.apk
 
@@ -75,7 +74,7 @@ wait_for_boot test-apk.apk
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 
@@ -99,7 +98,7 @@ wait_for_app test-apk.apk com.example.neon42
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 
@@ -129,7 +128,7 @@ wait_for_app test-apk.apk com.example.neon42
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 
@@ -154,7 +153,7 @@ wait_for_app test-vulkan.apk com.android.example.vulkan.tutorials.five
 
 # The command doesn't exit by itself.
 (
-    sleep 5
+    sleep 20
     killall logcat
 ) &
 

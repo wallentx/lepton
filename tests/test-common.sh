@@ -41,7 +41,7 @@ function print_screen()
     test_log "$(chafa -s 640 --symbols all screen.png)"
 }
 
-function wait_for_boot()
+function wait_for_start()
 {
     end=$((SECONDS + 30))
     while [[ "$(./lepton ps | grep "$1 " | grep "${_GREEN}")" == "" ]]; do
@@ -52,6 +52,11 @@ function wait_for_boot()
         test_log "Waiting for container $1 to start"
         sleep 1
     done
+}
+
+function wait_for_boot()
+{
+    wait_for_start "$1"
 
     end=$((SECONDS + 30))
     while [[ "$(./lepton run "$1" getprop sys.boot_completed 2>/dev/null || true)" != "1" ]]; do
