@@ -5,7 +5,7 @@ function debugger_wait_enabled()
 
 function debugger_wait_commands()
 {
-    echo -n "setprop ro.lepton.wait_for_debugger true; am set-debug-app -w $(get_app_id)"
+    echo -n "setprop ro.lepton.wait_for_debugger true"
 }
 
 function map_pid()
@@ -56,7 +56,9 @@ function start_gdb_server()
     ) &
     GDBSERVER_PID="$!"
     # Some time to settle...
-    sleep 3
+    while ! busybox nc -z localhost ${PORT}; do
+        sleep 1
+    done
 }
 
 function start_lldb_server()
@@ -94,7 +96,9 @@ function start_lldb_server()
             /vendor/bin/lldb-server g :${PORT} --attach ${APP_CONTAINER_PID} >/dev/null 2>/dev/null
     ) & >/dev/null 2>/dev/null
     # Some time to settle...
-    sleep 1
+    while ! busybox nc -z localhost ${PORT}; do
+        sleep 1
+    done
 }
 
 
@@ -116,9 +120,11 @@ function kill_lldb_server()
 function gdb_attach_to_server()
 {
     local PORT="${1:-$(gdb_port)}"
-    while [[ "$(podman_attach sh -c "getprop ro.lepton.ready_for_debugger")" == "" ]]; do
-        echo "Waiting for lepton.ready_for_debugger."
-    done
+    if [[ "$(podman_attach sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
+        while [[ "$(podman_attach sh -c "getprop ro.lepton.ready_for_debugger")" == "" ]]; do
+            echo "Waiting for lepton.ready_for_debugger."
+        done
+    fi
     unlock_lepton
     "gdb" -q -ex "set pagination off" \
            -x "${LEPTON_DIR}/../images/rootfs_overlay/vendor/etc/gdb/gdb.init" \
@@ -130,9 +136,10 @@ function gdb_attach_to_server()
 function lldb_attach_to_server()
 {
     local PORT="${1:-$(lldb_port)}"
-    local APP_CONTAINER_PID="$(map_pid "${PID}")"
-    if [[ "${PID}" != "${APP_CONTAINER_PID}" ]]; then
-        echo "PID automapped from ${PID} -> ${APP_CONTAINER_PID} within the container"
+    if [[ "$(podman_attach sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
+        while [[ "$(podman_attach sh -c "getprop ro.lepton.ready_for_debugger")" == "" ]]; do
+            echo "Waiting for lepton.ready_for_debugger."
+        done
     fi
     unlock_lepton
     lldb --one-line "gdb-remote localhost:${PORT}"

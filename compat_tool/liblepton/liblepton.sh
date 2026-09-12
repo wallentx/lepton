@@ -419,9 +419,14 @@ function podman_attach()
 
 function guess_app_pid()
 {
+    local PID="$(podman_attach --no-term sh -c "getprop ro.lepton.application_pid" 2>/dev/null)"
+    if [[ -n "${PID}" ]]; then
+         echo -n "${PID}"
+	 return
+    fi
     local APP_ID="$(podman_attach --no-term sh -c "getprop lepton.active_app_id" 2>/dev/null)"
     if [[ -n "${APP_ID}" ]]; then
-         local PID=$(podman_attach --no-term sh -c "ps -A -oPID,NAME" | grep "${APP_ID}" | head -1 | awk '{ print $1 }')
+         local PID=$(podman_attach --no-term sh -c "pgrep -f ${APP_ID}" | head -1 | awk '{ print $1 }')
          echo -n "${PID}"
     fi
 }
