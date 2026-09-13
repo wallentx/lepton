@@ -57,6 +57,7 @@ sudo sh -c "echo "+cpu +cpuset +memory +pids" > /sys/fs/cgroup/cgroup.subtree_co
         sleep 1
         exec {xtrace_fd_logcat}> "${OWD}/lepton-logcat-trace.txt"
         export BASH_XTRACEFD="${xtrace_fd_logcat}"
+        export PS4='+ pid=$$ tid=? '
         LEPTON_DEBUG=true ./lepton logcat sysbake > "${OWD}/sysbake-logcat.txt" || true
     done
 ) &

@@ -87,6 +87,7 @@ sudo chown steamos:steamos "${OWD}/test-trace.log"
 exec {xtrace_fd}> "${OWD}/test-trace.log"
 export BASH_XTRACEFD="${xtrace_fd}"
 export LEPTON_DEBUG=true
+export PS4='+ pid=$$ tid=? '
 
 sudo touch "${OWD}/test-dmesg.log"
 sudo chown steamos:steamos "${OWD}/test-dmesg.log"
