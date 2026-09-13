@@ -256,21 +256,32 @@ function start_container()
     WAIT_FILE_PID="$!"
 
     (
+        while [[ -z "$(podman_attach pidof logd)" ]]; do
+            sleep 1
+        done
         # Check if CryptKeeper failed to start (bug!)
-        if logcat_container "${CONTEXT}" | grep -q "Killing.*CryptKeeper.*start timeout"; then
-            # If we ever reach here, the start timeout for CryptKeeper was hit
-            podman_attach am start -n com.android.settings/.CryptKeeper
-        fi
+        logcat_container "${CONTEXT}" | grep --line-buffered "Killing.*CryptKeeper.*start timeout" |
+            while IFS= read -r line; do
+                podman_attach am start -n com.android.settings/.CryptKeeper
+            done
     ) &
     START_WORKAROUND_PID="$!"
 
     (
+        while [[ -z "$(podman_attach pidof logd)" ]]; do
+            sleep 1
+        done
         # Check if a service failed to start (bug!)
-        if logcat_container "${CONTEXT}" | grep -q "Forcing bringing down service"; then
-            FAILED_SERVICE="$(logcat_container "${CONTEXT}" | stdbuf -o0 grep "Forcing bringing down service" | grep -o "ServiceRecord{.*}" | awk '{print $3}' | sed "s/}//g" | head -n0 >/dev/null 2>/dev/null || true)"
-            # If we ever reach here, the start timeout for a service was hit
-            podman_attach am start -n "${FAILED_SERVICE}"
-        fi
+        logcat_container "${CONTEXT}" | grep --line-buffered "Forcing bringing down service" |
+            while IFS= read -r line; do
+                FAILED_SERVICE="$(printf '%s\n' "$line" |
+                    grep -o 'ServiceRecord{[^}]*}' |
+                    awk '{print $3}' |
+                    sed 's/}//')"
+
+                [[ -n "$FAILED_SERVICE" ]] &&
+                    podman_attach am start -n "${FAILED_SERVICE}"
+            done
     ) &
     START_WORKAROUND2_PID="$!"
 
