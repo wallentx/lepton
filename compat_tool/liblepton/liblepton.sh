@@ -509,6 +509,9 @@ function install_app()
         # Kill first to remove old connections
         "$ADB" -P "${TEMP_PORT}" kill-server 2>/dev/null
         "$ADB" -P "${TEMP_PORT}" connect localhost:"${ADB_PORT}" >/dev/null 2>/dev/null
+        if ! "$ADB" -P "${TEMP_PORT}" -s "localhost:${ADB_PORT}" wait-for-device; then
+            println "Device did not become available, installation will likely fail!"
+        fi
         if ! is_steamlaunch; then
             if [[ -f "${APP_ID_FILE}" ]]; then
                 "$ADB" -P "${TEMP_PORT}" -s localhost:"${ADB_PORT}" push "${APP_ID_FILE}" /data/steam_app
