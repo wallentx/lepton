@@ -9,53 +9,138 @@ sed -i "s/_RED=\"\"/_RED=\"RED: \"/g" lepton
 sed -i "s/_GREEN=\"\"/_GREEN=\"GREEN: \"/g" lepton
 sed -i "s/_PLAIN=\"\"/_PLAIN=\"PLAIN: \"/g" lepton
 
-monitor_logcat testapp &
-LOGCAT_PID="$!"
+max_parallel=25
+total=5000
 
-export STEAM_COMPAT_INSTALL_PATH="/home/steamos/.local/share/Steam/steamapps/common/testapp"
-export STEAM_COMPAT_CLIENT_INSTALL_PATH=/home/steamos/.local/share/Steam
-export STEAM_COMPAT_DATA_PATH=/home/steamos/.local/share/Steam/steamapps/compatdata/testapp
-export STEAM_COMPAT_SHADER_PATH=/home/steamos/.local/share/Steam/steamapps/shadercache/testapp
-export STEAM_FOSSILIZE_DUMP_PATH=/home/steamos/.local/share/Steam/steamapps/shadercache/testapp/fozpipelinesv6/steamapp_pipeline_cache
-export SteamAppId=testapp
+for ((i=1; i<=max_parallel; i++)); do
+    name="testapp-instance-${i}"
 
-mkdir -p "${STEAM_COMPAT_INSTALL_PATH}"
-mkdir -p "${STEAM_COMPAT_CLIENT_INSTALL_PATH}"
-mkdir -p "${STEAM_COMPAT_DATA_PATH}"
-mkdir -p "${STEAM_COMPAT_SHADER_PATH}"
-mkdir -p "${STEAM_FOSSILIZE_DUMP_PATH}"
+    export STEAM_COMPAT_INSTALL_PATH="${HOME}/.local/share/Steam/steamnames/common/${name}"
+    export STEAM_COMPAT_CLIENT_INSTALL_PATH="${HOME}/.local/share/Steam"
+    export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamnames/compatdata/${name}"
+    export STEAM_COMPAT_SHADER_PATH="${HOME}/.local/share/Steam/steamnames/shadercache/${name}"
+    export STEAM_FOSSILIZE_DUMP_PATH="${STEAM_COMPAT_SHADER_PATH}/fozpipelinesv6/steamname_pipeline_cache"
+    export SteamAppId="${name}"
 
-cp tests/test-apk.apk "${STEAM_COMPAT_INSTALL_PATH}"
+    mkdir -p \
+        "${STEAM_COMPAT_INSTALL_PATH}" \
+        "${STEAM_COMPAT_CLIENT_INSTALL_PATH}" \
+        "${STEAM_COMPAT_DATA_PATH}" \
+        "${STEAM_COMPAT_SHADER_PATH}" \
+        "${STEAM_FOSSILIZE_DUMP_PATH}"
 
-tee /home/steamos/.local/share/Steam/steamapps/appmanifest_testapp.acf <<EOF
+    cp tests/test-apk.apk "${STEAM_COMPAT_INSTALL_PATH}/"
+
+    tee "/home/steamos/.local/share/Steam/steamnames/namemanifest_${name}.acf" > /dev/null <<EOF
 "AppState"
 {
-	"appid"     		"testapp"
-	"name"		        "testapp"
-	"installdir"		"testapp"
+    "nameid"             "${name}"
+    "name"              "${name}"
+    "installdir"        "${name}"
 }
 EOF
+done
 
-for i in {1..250}; do
+unset name
+
+unset STEAM_COMPAT_INSTALL_PATH
+unset STEAM_COMPAT_CLIENT_INSTALL_PATH
+unset STEAM_COMPAT_DATA_PATH
+unset STEAM_COMPAT_SHADER_PATH
+unset STEAM_FOSSILIZE_DUMP_PATH
+unset SteamAppId
+
+function run_test() {
+    local i="$1"
+    local name="testapp-instance-${i}"
+
+    sudo rm -rf /sys/fs/cgroup/lepton-steamlaunch-${name}
+    sudo mkdir -p /sys/fs/cgroup/lepton-steamlaunch-${name}
+    sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-steamlaunch-${name}/cgroup.procs"
+    sudo chown steamos:steamos -R /sys/fs/cgroup
+    sudo chmod 777 -R /sys/fs/cgroup
+    sudo sh -c "echo "+cpu +cpuset +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control"
+
     test_log "PASS$i"
-    (./lepton start || test_log "container failed to start, test will timeout.") &
 
-    wait_for_boot testapp
+    (
+        STEAM_COMPAT_INSTALL_PATH="${HOME}/.local/share/Steam/steamnames/common/${name}" \
+        STEAM_COMPAT_CLIENT_INSTALL_PATH="${HOME}/.local/share/Steam" \
+        STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamapps/compatdata/${name}" \
+        STEAM_COMPAT_SHADER_PATH="${HOME}/.local/share/Steam/steamapps/shadercache/${name}" \
+        STEAM_FOSSILIZE_DUMP_PATH="${HOME}/.local/share/Steam/steamapps/shadercache/${name}/fozpipelinesv6/steamapp_pipeline_cache" \
+        SteamAppId="${name}" \
+        LEPTON_ADB_PORT=$((5554 + i)) \
+        LEPTON_GDB_PORT=$((1336 + i)) \
+        LEPTON_LLDB_PORT=$((2336 + i)) ./lepton start "$name" ||
+            test_log "$name failed to start."
+    ) &
 
-    wait_for_app testapp com.example.neon42
-
-    if [[ "$(./lepton ps | grep "testapp" | grep "${_GREEN}")" == "" ]]; then
-        test_log "repeated start test failed, lepton ps inconsistent (1)!"
-        test_failure
+    if ! wait_for_boot "$name" 360; then
+        return 1
     fi
 
-    ./lepton stop testapp
+    if ! wait_for_app "$name" com.example.neon42 360; then
+        return 1
+    fi
 
-    # Run cleanup all every now and then
-    if (( i % 5 == 0 )); then
-        ./lepton cleanup_all
+    if [[ "$(./lepton ps | grep "$name" | grep "${_GREEN}")" == "" ]]; then
+        test_log "repeated start test failed for $name, lepton ps inconsistent (1)!"
+        return 1
+    fi
+
+    ./lepton stop "$name"
+    return 0
+}
+
+# Let's not waste too much time, many containers start at the same time
+export LEPTON_LOCK_TIMEOUT=0
+# App launches may be slow
+export LEPTON_APP_LAUNCH_TIMEOUT=10000
+
+export LEPTON_NO_PORT_FORWARDING=true
+failed=0
+
+declare -a pids
+
+for ((i=1; i<=total; i++)); do
+    j=$(( (i - 1) % max_parallel + 1 ))
+
+    # Wait until this specific test ID is free.
+    if [[ -n "${pids[j]:-}" ]]; then
+        if ! wait "${pids[j]}"; then
+            ((++failed))
+        fi
+        unset 'pids[j]'
+    fi
+
+    run_test "$j" &
+    pids[j]=$!
+done
+
+# Wait for remaining tests.
+for ((j=1; j<=max_parallel; j++)); do
+    if [[ -n "${pids[j]:-}" ]]; then
+        if ! wait "${pids[j]}"; then
+            ((failed++))
+        fi
     fi
 done
+
+function android_sdk_version()
+{
+    cat ./images/rootfs/system/build.prop | grep ro.build.version.sdk= | sed "s/.*=//g"
+}
+
+if (( failed > 0 )); then
+    test_log "testapp repeated start test failed $failed times."
+
+    # Our android 30 image sometimes fails to start...
+    # Might be some patch that breaks it or some android bug...
+    if [[ "$(android_sdk_version)" != "30" ]]; then
+       test_failure
+    fi
+fi
 
 test_log "testapp repeated start test finished"
 

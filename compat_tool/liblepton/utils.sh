@@ -153,7 +153,7 @@ function colon_path_list()
 
 function lock_lepton()
 {
-    if ! flock --timeout 10 "${LEPTON_LOCKFD}"; then
+    if ! flock --timeout "${LEPTON_LOCK_TIMEOUT:-10}" "${LEPTON_LOCKFD}"; then
         echo "WARNING: Failed to acquire the lepton lock."
     fi
 }

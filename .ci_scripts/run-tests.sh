@@ -132,11 +132,11 @@ case "$1" in
     11)
         ${OWD}/tests/test-proxy.sh
         ;;
-    1[2-9]|2[0-9]|3[0-1])
-        ${OWD}/tests/test-repeated-start.sh
-        ;;
-    32)
+    12)
         ${OWD}/tests/test-realpath.sh
+        ;;
+    13)
+        ${OWD}/tests/test-repeated-start.sh
         ;;
 esac
 

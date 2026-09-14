@@ -58,7 +58,7 @@ fi
 # This lock guards against multiple commands running at the same time
 # which would be problematic for e.g. start due to the port assignments.
 exec {LEPTON_LOCKFD}>/tmp/lepton.lock
-if ! flock --timeout 10 "${LEPTON_LOCKFD}"; then
+if ! flock --timeout "${LEPTON_LOCK_TIMEOUT:-10}" "${LEPTON_LOCKFD}"; then
     echo "WARNING: Failed to acquire the lepton lock (initial)."
 fi
 

@@ -52,15 +52,6 @@ function live_port_forwarding_offsets()
     done | sort -n
 }
 
-function podman_forward_ports()
-{
-    CONTEXT="${1}"
-    OFFSET="${2}"
-
-    ADB_PORT="$((5555 + ${OFFSET}))"
-    export LEPTON_ADB_PORT="${ADB_PORT}"
-}
-
 function setup_podman_port_forwards()
 {
     local PORT_FORWARDING_OFFSETS=( $(live_port_forwarding_offsets) )
@@ -111,8 +102,13 @@ function podman_network_options()
     # We need to map the gateway otherwise steamclient can't connect.
     PODMAN_NETWORK_OPTIONS+=" --map-gw"
 
-    PODMAN_NETWORK_OPTIONS+=" -t auto"
-    PODMAN_NETWORK_OPTIONS+=" -u auto"
+    if [[ "${LEPTON_NO_PORT_FORWARDING:-false}" != "false" ]]; then
+        PODMAN_NETWORK_OPTIONS+=" -t $(adb_port) -t $(lldb_port) -t $(gdb_port)"
+    else
+        PODMAN_NETWORK_OPTIONS+=" -t auto"
+        PODMAN_NETWORK_OPTIONS+=" -u auto"
+    fi
+
     PODMAN_NETWORK_OPTIONS+=" --no-splice"
 
     # Since the dns is configured to this address in generate_ipconfig_txt we
@@ -128,11 +124,11 @@ function setup_podman_network()
         podman_cmdline "--network=none"
     else
         setup_podman_port_forwards
+        export LEPTON_ADB_PORT="${LEPTON_ADB_PORT:-$((5555 + $(lepton_port_offset)))}"
         export LEPTON_GDB_PORT="${LEPTON_GDB_PORT:-$((1337 + $(lepton_port_offset)))}"
         export LEPTON_LLDB_PORT="${LEPTON_LLDB_PORT:-$((2337 + $(lepton_port_offset)))}"
         podman_cmdline "$(podman_network_options)"
         podman_cmdline "--add-host=host.containers.internal:$(podman_subnet).1"
-        podman_forward_ports "${LEPTON_CONTEXT}" "$(lepton_port_offset)"
     fi
 }
 

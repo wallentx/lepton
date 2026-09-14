@@ -340,7 +340,7 @@ build-test-apk-job:
 
 tests-job:
   stage: test
-  parallel: 32
+  parallel: 13
   image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg:latest
   needs:
     - pre-sysbake-job
@@ -381,7 +381,7 @@ tests-job:
 
 tests-14-job:
   stage: test
-  parallel: 32
+  parallel: 13
   image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg:latest
   needs:
     - pre-sysbake-job

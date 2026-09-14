@@ -136,7 +136,7 @@ function setup_props()
         props_echo "lepton.headless=true"
     fi
 
-    props_echo "lepton.active_app_launch_timeout=60"
+    props_echo "lepton.active_app_launch_timeout=${LEPTON_APP_LAUNCH_TIMEOUT:-60}"
 
     # Tell `libsteam_api.so` where to find `libsteamclient.so`
     props_echo "lepton.steamclient.path=/system/lib64/libsteamclient.so"

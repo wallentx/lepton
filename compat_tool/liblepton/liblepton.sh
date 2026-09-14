@@ -505,7 +505,7 @@ function install_app()
         # Deliberately using a different port as to not mess with the users
         # adb server.
         local ADB_PORT="$(adb_port)"
-        local TEMP_PORT=$((ADB_PORT - 500))
+        local TEMP_PORT=$((ADB_PORT + 10000))
         # Kill first to remove old connections
         "$ADB" -P "${TEMP_PORT}" kill-server 2>/dev/null
         "$ADB" -P "${TEMP_PORT}" connect localhost:"${ADB_PORT}" >/dev/null 2>/dev/null

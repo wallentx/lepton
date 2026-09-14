@@ -43,52 +43,59 @@ function print_screen()
 
 function wait_for_start()
 {
-    end=$((SECONDS + 30))
+    MAX_TIME="${2:-30}"
+    end=$((SECONDS + MAX_TIME))
     while [[ "$(./lepton ps | grep "$1 " | grep "${_GREEN}")" == "" ]]; do
         if (( SECONDS >= end )); then
-            test_log "container $1 failed to spin up within 30 seconds."
-            test_failure
+            test_log "container $1 failed to spin up within ${MAX_TIME} seconds."
+            return 1
         fi
         test_log "Waiting for container $1 to start"
         sleep 1
     done
+    return 0
 }
 
 function wait_for_boot()
 {
-    wait_for_start "$1"
+    MAX_TIME="${2:-30}"
+    end=$((SECONDS + MAX_TIME))
 
-    end=$((SECONDS + 30))
+    wait_for_start "$1" "${MAX_TIME}"
+
+    end=$((SECONDS + MAX_TIME))
     while [[ "$(./lepton run "$1" getprop sys.boot_completed 2>/dev/null || true)" != "1" ]]; do
         if (( SECONDS >= end )); then
-            test_log "container $1 failed to reach boot complete within 30 seconds."
-            test_failure
-            break
+            test_log "container $1 failed to reach boot complete within ${MAX_TIME} seconds."
+            return 1
         fi
         if [[ "$(./lepton ps | grep "$1 " | grep "${_RED}")" != "" ]]; then
             test_log "container $1 failed to reach boot completed state."
-            test_failure
+            return 1
         fi
         test_log "Waiting for "$1" container to boot."
         sleep 1
     done
+    return 0
 }
 
 function wait_for_app()
 {
-    end=$((SECONDS + 30))
+    MAX_TIME="${3:-30}"
+    end=$((SECONDS + MAX_TIME))
+
     while [[ "$(./lepton run "$1" pidof "$2" 2>/dev/null || true)" == "" ]]; do
         if (( SECONDS >= end )); then
-            test_log "app $1 failed to start within 30 seconds."
+            test_log "app $1 failed to start within ${MAX_TIME} seconds."
             ./lepton run "$1" getprop
             ./lepton run "$1" dumpsys
             print_screen "$1"
-            test_failure
-            break
+            return 1
         fi
         test_log "Waiting for app $2"
         sleep 1
     done
+    return 0
 }
 
 function get_ns_pids()
