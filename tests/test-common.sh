@@ -12,8 +12,8 @@ sed -i "s/_PLAIN=\".*\"/_PLAIN=\"PLAIN: \"/g" lepton
 
 function test_log()
 {
-    echo "${TEST_PREFIX}$@"
-    echo "${TEST_PREFIX}$@" >> ${TEST_LOGFILE}
+    echo "${TEST_PREFIX}$*"
+    echo "${TEST_PREFIX}$*" >> "${TEST_LOGFILE}"
 }
 
 function monitor_logcat()
@@ -73,7 +73,7 @@ function wait_for_boot()
             test_log "container $1 failed to reach boot completed state."
             return 1
         fi
-        test_log "Waiting for "$1" container to boot."
+        test_log "Waiting for ""$1"" container to boot."
         sleep 1
     done
     return 0
@@ -100,6 +100,6 @@ function wait_for_app()
 
 function get_ns_pids()
 {
-    awk '/^NSpid:/ {for (i=2; i<=NF; i++) print $i}' /proc/$(pidof $1)/status
+    awk '/^NSpid:/ {for (i=2; i<=NF; i++) print $i}' /proc/$(pidof "$1")/status
 }
 

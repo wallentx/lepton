@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $TESTS_DIR/test-common.sh
+source "$TESTS_DIR"/test-common.sh
 
 monitor_logcat dev &
 LOGCAT_PID="$!"

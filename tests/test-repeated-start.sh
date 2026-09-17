@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $TESTS_DIR/test-common.sh
+source "$TESTS_DIR"/test-common.sh
 
 sed -i "s/_RED=\"\"/_RED=\"RED: \"/g" lepton
 sed -i "s/_GREEN=\"\"/_GREEN=\"GREEN: \"/g" lepton
@@ -54,8 +54,8 @@ function run_test() {
     local i="$1"
     local name="testapp-instance-${i}"
 
-    sudo rm -rf /sys/fs/cgroup/lepton-steamlaunch-${name}
-    sudo mkdir -p /sys/fs/cgroup/lepton-steamlaunch-${name}
+    sudo rm -rf /sys/fs/cgroup/lepton-steamlaunch-"${name}"
+    sudo mkdir -p /sys/fs/cgroup/lepton-steamlaunch-"${name}"
     sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-steamlaunch-${name}/cgroup.procs"
     sudo chown steamos:steamos -R /sys/fs/cgroup
     sudo chmod 777 -R /sys/fs/cgroup

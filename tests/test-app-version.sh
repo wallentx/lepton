@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $TESTS_DIR/test-common.sh
+source "$TESTS_DIR"/test-common.sh
 
 sed -i "s/_RED=\"\"/_RED=\"RED: \"/g" lepton
 sed -i "s/_GREEN=\"\"/_GREEN=\"GREEN: \"/g" lepton
