@@ -79,7 +79,7 @@ function setup_props()
 
         # Tell Fossilize to write out shaders to this directory
         if is_app && [[ -n "${STEAM_FOSSILIZE_DUMP_PATH:-}" ]]; then
-            local DUMP_SUBPATH="${STEAM_FOSSILIZE_DUMP_PATH#${STEAM_COMPAT_SHADER_PATH}/}"
+            local DUMP_SUBPATH="${STEAM_FOSSILIZE_DUMP_PATH#"${STEAM_COMPAT_SHADER_PATH}"/}"
             props_echo "debug.fossilize.dump_path=/data/shaders/${DUMP_SUBPATH}"
             props_echo "mesa.shader.cache.disable=false"
             props_echo "mesa.shader.cache.dir=/data/shaders"

@@ -387,7 +387,7 @@ function start_early_debug_container()
         --label PREFIX="${LEPTON_PREFIX:-}" \
         "${PODMAN_CMDLINE[@]}" \
         -it \
-        --rootfs ${ROOTFS}\
+        --rootfs "${ROOTFS}"\
             /system/bin/sh
 }
 
@@ -483,13 +483,13 @@ function install_app()
 {
     local APK_PATH="${1:-$(get_apk_path)}"
     APK_PATH="$(realpath "${APK_PATH}")"
-    local APP_ID_FILE="$(dirname ${APK_PATH})/steam_appid.txt"
-    local UE_COMMANDLINE_FILE="$(dirname ${APK_PATH})/UECommandLine.txt"
-    local OBB_DIR="$(dirname ${APK_PATH})/obb"
+    local APP_ID_FILE="$(dirname "${APK_PATH}")/steam_appid.txt"
+    local UE_COMMANDLINE_FILE="$(dirname "${APK_PATH}")/UECommandLine.txt"
+    local OBB_DIR="$(dirname "${APK_PATH}")/obb"
     local OBB_DIR_IS_APK_DIR=false
 
     if [[ ! -d "${OBB_DIR}" ]]; then
-        OBB_DIR="$(dirname ${APK_PATH})"
+        OBB_DIR="$(dirname "${APK_PATH}")"
         OBB_DIR_IS_APK_DIR=true
     fi
 
@@ -613,7 +613,7 @@ function kill_container()
         unlock_lepton
 
         while kill -0 "${LEPTON_PID}" 2>/dev/null; do
-            println "Waiting for "${CONTEXT}" (PID '${LEPTON_PID}') to exit..."
+            println "Waiting for ""${CONTEXT}"" (PID '${LEPTON_PID}') to exit..."
             sleep 1
         done
 
@@ -653,9 +653,9 @@ function list_android_games()
 {
     STEAMAPPS_PATH="${HOME}/.local/share/Steam/steamapps"
     for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-        INSTALLDIR="$(grep installdir ${GAME} | cut -d'"' -f4)"
+        INSTALLDIR="$(grep installdir "${GAME}" | cut -d'"' -f4)"
         if compgen -G "${STEAMAPPS_PATH}/common/${INSTALLDIR}/*.apk" >/dev/null; then
-            println "\"$(grep name ${GAME} | cut -d'"' -f4)\""
+            println "\"$(grep name "${GAME}" | cut -d'"' -f4)\""
         fi
     done
 }
@@ -664,10 +664,10 @@ function list_live_android_games()
 {
     STEAMAPPS_PATH="${HOME}/.local/share/Steam/steamapps"
     for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-        GAMENAME="$(grep name ${GAME} | cut -d'"' -f4)"
+        GAMENAME="$(grep name "${GAME}" | cut -d'"' -f4)"
         if [[ "${GAMENAME}" == "${1:-}"* ]]; then
-            INSTALLDIR="$(grep installdir ${GAME} | cut -d'"' -f4)"
-            APPID="$(grep appid ${GAME} | cut -d'"' -f4)"
+            INSTALLDIR="$(grep installdir "${GAME}" | cut -d'"' -f4)"
+            APPID="$(grep appid "${GAME}" | cut -d'"' -f4)"
             if is_context_live steamlaunch-"${APPID}" && compgen -G "${STEAMAPPS_PATH}/common/${INSTALLDIR}/*.apk" >/dev/null; then
                 println "\"${GAMENAME}\""
             fi
@@ -699,8 +699,8 @@ function is_context_live()
 
     if ! is_steamlaunch "${CONTEXT}"; then
         for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-            if [[ "$(grep name ${GAME} | cut -d'"' -f4)" == "${CONTEXT}" ]]; then
-                STEAMLAUNCH_CONTEXT="steamlaunch-$(grep appid ${GAME} | cut -d'"' -f4)"
+            if [[ "$(grep name "${GAME}" | cut -d'"' -f4)" == "${CONTEXT}" ]]; then
+                STEAMLAUNCH_CONTEXT="steamlaunch-$(grep appid "${GAME}" | cut -d'"' -f4)"
                 local STATE="$(podman inspect -f '{{ .State.Status }}' "lepton-${STEAMLAUNCH_CONTEXT}" 2>/dev/null || true)"
                 [[ "${STATE}" == "running" ]]
                 return $?
@@ -718,7 +718,7 @@ function list_containers()
             IP=$(podman_ip "${CONTEXT}" || print "<?>")
             PACKAGES="$(LEPTON_CONTEXT="${CONTEXT}" podman_attach_no_context_check pm list packages -3 2>/dev/null |grep -o "package:.*" || true)"
             if [[ -n "${PACKAGES}" ]]; then
-                APP_STR="packages: $(println ${PACKAGES} | sed "s/package://g" | sed -z 's/\r/,/g' | sed "s/,$//g")"
+                APP_STR="packages: $(println "${PACKAGES}" | sed "s/package://g" | sed -z 's/\r/,/g' | sed "s/,$//g")"
             else
                 APP_STR=""
             fi
@@ -755,9 +755,9 @@ function cleanup_container()
     kill_container "${CONTEXT}"
 
     if [[ -n "${OTHER_STEAM_COMPAT_DATA_PATH}" ]]; then
-        rm -f ${OTHER_STEAM_COMPAT_DATA_PATH}/baked/data_overlay/system/users/0/settings_global.xml || true
-        rm -f ${OTHER_STEAM_COMPAT_DATA_PATH}/baked/data_overlay/system/users/0/settings_system.xml || true
-        rm -f ${OTHER_STEAM_COMPAT_DATA_PATH}/baked/data_overlay/system/users/0/settings_secure.xml || true
+        rm -f "${OTHER_STEAM_COMPAT_DATA_PATH}"/baked/data_overlay/system/users/0/settings_global.xml || true
+        rm -f "${OTHER_STEAM_COMPAT_DATA_PATH}"/baked/data_overlay/system/users/0/settings_system.xml || true
+        rm -f "${OTHER_STEAM_COMPAT_DATA_PATH}"/baked/data_overlay/system/users/0/settings_secure.xml || true
     fi
 }
 
@@ -783,7 +783,7 @@ function cleanup_all()
     for CONTEXT in "${LEPTON_DATA_DIR}"/*; do
         [[ -e "$CONTEXT" ]] || break
 
-        CONTEXT="$(lepton_basename ${CONTEXT})"
+        CONTEXT="$(lepton_basename "${CONTEXT}")"
         cleanup_container "${CONTEXT}"
 
         STEAM_COMPAT_DATA_PATH="${LEPTON_DATA_DIR}/${CONTEXT}"
@@ -843,9 +843,9 @@ function determine_app()
         # Might be the name of a game, let's see.
         # This might be slow when there's a ton of games, but it's kind of a debug option anyways.
         for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-            if [[ "$(grep name ${GAME} | cut -d'"' -f4)" == "${LEPTON_CONTEXT}" ]]; then
-                export SteamAppId="$(grep appid ${GAME} | cut -d'"' -f4)"
-                export STEAM_COMPAT_INSTALL_PATH="${STEAMAPPS_PATH}/common/$(grep installdir ${GAME} | cut -d'"' -f4)"
+            if [[ "$(grep name "${GAME}" | cut -d'"' -f4)" == "${LEPTON_CONTEXT}" ]]; then
+                export SteamAppId="$(grep appid "${GAME}" | cut -d'"' -f4)"
+                export STEAM_COMPAT_INSTALL_PATH="${STEAMAPPS_PATH}/common/$(grep installdir "${GAME}" | cut -d'"' -f4)"
                 export STEAM_COMPAT_DATA_PATH="${STEAMAPPS_PATH}/compatdata/${SteamAppId}"
                 # We don't know what the library paths would be, so just make sure we mount everything
                 export STEAM_COMPAT_LIBRARY_PATHS="${STEAMAPPS_PATH}"
@@ -863,7 +863,7 @@ function determine_app()
         done
     elif [[ "${LEPTON_CONTEXT}" == *".apk" ]]; then
         local APK_FULL_PATH="${LEPTON_CONTEXT}"
-        export LEPTON_CONTEXT="$(basename ${APK_FULL_PATH})"
+        export LEPTON_CONTEXT="$(basename "${APK_FULL_PATH}")"
 
         if [[ "${IS_START}" == "true" ]]; then
             create_prefix
@@ -880,7 +880,7 @@ function determine_app()
                 export LEPTON_MOUNT_OBB_DIR="$(cd "$(dirname "${APK_FULL_PATH}")/obb" && pwd)"
             fi
 
-            export APP_PATH="${LEPTON_APK_TMPDIR}/$(basename ${LEPTON_CONTEXT})"
+            export APP_PATH="${LEPTON_APK_TMPDIR}/$(basename "${LEPTON_CONTEXT}")"
             export STEAM_COMPAT_DATA_PATH="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/compatdata/${LEPTON_CONTEXT}"
             export STEAM_COMPAT_LIBRARY_PATHS="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/compatdata/${LEPTON_CONTEXT}"
             export STEAM_COMPAT_SHADER_PATH="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/shadercache/${LEPTON_CONTEXT}"

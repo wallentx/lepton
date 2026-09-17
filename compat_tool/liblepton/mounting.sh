@@ -55,7 +55,7 @@ function setup_mounts()
             mapfile -t APKS < <(compgen -G "${APP_APK_DIR}/*.apk" || true)
             for APK in "${APKS[@]}"; do
                 if [[ "$(extract_app_id "${APK}")" == "${APP_ID}" ]]; then
-                    BASE_APK="$(lepton_basename ${APK})"
+                    BASE_APK="$(lepton_basename "${APK}")"
                 fi
             done
         fi
@@ -80,7 +80,7 @@ function setup_mounts()
     GUESTOS_OVERLAY="/usr/share/guestos/android"
 
     for OVERLAY in ${LEPTON_OVERLAY} ${GUESTOS_OVERLAY}; do
-        pushd "${OVERLAY}" >/dev/null
+        pushd "${OVERLAY}" >/dev/null || exit
         while IFS= read -r -d '' file; do
             DST="${file#./}"
 
@@ -91,7 +91,7 @@ function setup_mounts()
 
             podman_mount_entry "${OVERLAY}/${DST}" "/${DST}" ro
         done < <(find . -type f -print0)
-        popd > /dev/null
+        popd > /dev/null || exit
     done
 
     # If we're baked, put our app in the correct location, otherwise just plop it into `/data/steam_app`
@@ -240,7 +240,7 @@ function setup_podman_base()
     podman_cmdline --hostname "lepton-${LEPTON_CONTEXT}"
 
     # seccomp
-    podman_cmdline --security-opt seccomp=${LEPTON_DIR}/lepton.seccomp.json
+    podman_cmdline --security-opt seccomp="${LEPTON_DIR}"/lepton.seccomp.json
 }
 
 function podman_extract_rootfs_file()
@@ -252,7 +252,7 @@ function podman_extract_rootfs_file()
 
 function generate_app_launch_rc()
 {
-    local APP_LAUNCH_RC="$(prefix ${1:-})/lepton_app_launch.rc"
+    local APP_LAUNCH_RC="$(prefix "${1:-}")/lepton_app_launch.rc"
 
     local APP_MOUNT_TARGET="data/steam_app"
     if is_app_baked; then
@@ -279,7 +279,7 @@ function generate_app_launch_rc()
         println "    exec -- /vendor/bin/fix_obb_symlink.sh \"${APP_ID}\"" >>"${APP_LAUNCH_RC}"
 
         # Add install commands for vulkan layers
-        local HOST_LAYER_INSTALL_SCRIPT="$(prefix ${1:-})/vulkan_layer_setup.sh"
+        local HOST_LAYER_INSTALL_SCRIPT="$(prefix "${1:-}")/vulkan_layer_setup.sh"
         local CONTAINER_LAYER_INSTALL_SCRIPT="/vendor/share/vulkan_layer_setup.sh"
         generate_vulkan_settings_script > "${HOST_LAYER_INSTALL_SCRIPT}"
         chmod 0755 "${HOST_LAYER_INSTALL_SCRIPT}"
@@ -366,7 +366,7 @@ function generate_zygote_launch_rc()
         NO_PROXY
         no_proxy
     )
-    local ZYGOTE_LAUNCH_RC="$(prefix ${1:-})/init.zygote64.rc"
+    local ZYGOTE_LAUNCH_RC="$(prefix "${1:-}")/init.zygote64.rc"
     podman_extract_rootfs_file "/system/etc/init/hw/init.zygote64.rc" "${ZYGOTE_LAUNCH_RC}"
     for VAR in ${PASSTHROUGH_VARS[@]}; do
         if [[ -v "${VAR}" ]]; then
@@ -439,7 +439,7 @@ function setup_podman_mounts()
     podman_cmdline --tmpfs /dev/socket:rw,nosuid,noexec,U
 
     for tmpfs in "${TMPFS_NODES[@]}"; do
-        podman_cmdline --tmpfs /${tmpfs}:rw,nosuid,nodev,noexec,U
+        podman_cmdline --tmpfs /"${tmpfs}":rw,nosuid,nodev,noexec,U
     done
     podman_cmdline --tmpfs /waydroid/xdg
 
@@ -610,13 +610,13 @@ function ensure_permissions_ok()
             # Log files we touch but are not owned by us will cause trouble
             for not_owned_by_us in $(find "${STEAMVR_LOGS_DIR}" ! -uid "$(id -u)" -name "*app_process64*" -type f); do
                 # Since the dir is owned by us, we can rm files within it.
-                rm -f ${not_owned_by_us}
+                rm -f "${not_owned_by_us}"
             done
 
             if [[ -n "${APP_ID}" ]]; then
                 for not_owned_by_us in $(find "${STEAMVR_LOGS_DIR}" ! -uid "$(id -u)" -name "*${APP_ID}*" -type f); do
                     # Since the dir is owned by us, we can rm files within it.
-                    rm -f ${not_owned_by_us}
+                    rm -f "${not_owned_by_us}"
                 done
             fi
         fi
@@ -625,12 +625,12 @@ function ensure_permissions_ok()
             COMPAT_DATA_PATH_STAT="$(stat --format "%u:%g" "${STEAM_COMPAT_DATA_PATH:-}" 2>/dev/null || true)"
             if [[ -n "${COMPAT_DATA_PATH_STAT}" ]] && [[ "${COMPAT_DATA_PATH_STAT}" != "$(id -u):$(id -g)" ]]; then
                 # If it's a directory it may not be empty, so we can't rm it => move it.
-                mv ${STEAM_COMPAT_DATA_PATH:-} ${STEAM_COMPAT_DATA_PATH:-}-backup
+                mv "${STEAM_COMPAT_DATA_PATH:-}" "${STEAM_COMPAT_DATA_PATH:-}"-backup
                 MOVED_INACCESSIBLE+="${STEAM_COMPAT_DATA_PATH:-}-backup "
             fi
             for not_owned_by_us in $(find "${STEAM_COMPAT_DATA_PATH:-}" -maxdepth 1 -type d \( ! -uid "$(id -u)" -a ! -name "*-backup" \) 2>/dev/null || true); do
                 # If it's a directory it may not be empty, so we can't rm it => move it.
-                mv ${not_owned_by_us} ${not_owned_by_us}-backup
+                mv "${not_owned_by_us}" "${not_owned_by_us}"-backup
                 MOVED_INACCESSIBLE+="${not_owned_by_us}-backup "
             done
         fi
@@ -638,14 +638,14 @@ function ensure_permissions_ok()
             SHADER_PATH_STAT="$(stat --format "%u:%g" "${STEAM_COMPAT_SHADER_PATH:-}" 2>/dev/null || true)"
             if [[ -n "${SHADER_PATH_STAT}" ]] && [[ "${SHADER_PATH_STAT}" != "$(id -u):$(id -g)" ]]; then
                 # If it's a directory it may not be empty, so we can't rm it => move it.
-                mv ${STEAM_COMPAT_SHADER_PATH:-} ${STEAM_COMPAT_SHADER_PATH:-}-backup
+                mv "${STEAM_COMPAT_SHADER_PATH:-}" "${STEAM_COMPAT_SHADER_PATH:-}"-backup
                 MOVED_INACCESSIBLE+="${STEAM_COMPAT_SHADER_PATH:-}-backup "
             fi
             for not_owned_by_us in $(find "${STEAM_COMPAT_SHADER_PATH:-}" -maxdepth 1 -type d ! -uid "$(id -u)" 2>/dev/null || true); do
                 # If it's a directory it may not be empty, so we can't rm it => move it.
                 # Also since we mount the whole dir as is, we cannot just mv
                 # the subdirectories since podman wants to lchown the whole dir
-                mv ${STEAM_COMPAT_SHADER_PATH:-} ${STEAM_COMPAT_SHADER_PATH:-}-backup
+                mv "${STEAM_COMPAT_SHADER_PATH:-}" "${STEAM_COMPAT_SHADER_PATH:-}"-backup
                 MOVED_INACCESSIBLE+="${STEAM_COMPAT_SHADER_PATH:-}-backup "
                 break
             done

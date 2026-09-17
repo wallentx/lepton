@@ -378,7 +378,7 @@ case "${COMMAND}" in
         APP_ID="$(extract_app_id "${3}")"
         APP_ACTIVITY="$(extract_app_activity "${3}" || true)"
         install_app "${3}"
-        if [[ " $@ " == *" --wait-for-debugger "* ]] || debugger_wait_enabled; then
+        if [[ " $* " == *" --wait-for-debugger "* ]] || debugger_wait_enabled; then
             println "Setting ${APP_ID} to wait for debugger..."
             podman_attach sh -c "$(debugger_wait_commands)"
         fi
