@@ -12,15 +12,16 @@ sed -i "s/_PLAIN=\"\"/_PLAIN=\"PLAIN: \"/g" lepton
 max_parallel=25
 total=5000
 
-for ((i=1; i<=max_parallel; i++)); do
-    name="testapp-instance-${i}"
+function run_test() {
+    local i="$1"
+    local name="testapp-instance-${i}"
 
-    export STEAM_COMPAT_INSTALL_PATH="${HOME}/.local/share/Steam/steamnames/common/${name}"
-    export STEAM_COMPAT_CLIENT_INSTALL_PATH="${HOME}/.local/share/Steam"
-    export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamnames/compatdata/${name}"
-    export STEAM_COMPAT_SHADER_PATH="${HOME}/.local/share/Steam/steamnames/shadercache/${name}"
-    export STEAM_FOSSILIZE_DUMP_PATH="${STEAM_COMPAT_SHADER_PATH}/fozpipelinesv6/steamname_pipeline_cache"
-    export SteamAppId="${name}"
+    local STEAM_COMPAT_INSTALL_PATH="${HOME}/.local/share/Steam/steamnames/common/${name}"
+    local STEAM_COMPAT_CLIENT_INSTALL_PATH="${HOME}/.local/share/Steam"
+    local STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamnames/compatdata/${name}"
+    local STEAM_COMPAT_SHADER_PATH="${HOME}/.local/share/Steam/steamnames/shadercache/${name}"
+    local STEAM_FOSSILIZE_DUMP_PATH="${STEAM_COMPAT_SHADER_PATH}/fozpipelinesv6/steamname_pipeline_cache"
+    local SteamAppId="${name}"
 
     mkdir -p \
         "${STEAM_COMPAT_INSTALL_PATH}" \
@@ -39,24 +40,19 @@ for ((i=1; i<=max_parallel; i++)); do
     "installdir"        "${name}"
 }
 EOF
-done
 
-unset name
+    CG="/sys/fs/cgroup/lepton-steamlaunch-${name}"
 
-unset STEAM_COMPAT_INSTALL_PATH
-unset STEAM_COMPAT_CLIENT_INSTALL_PATH
-unset STEAM_COMPAT_DATA_PATH
-unset STEAM_COMPAT_SHADER_PATH
-unset STEAM_FOSSILIZE_DUMP_PATH
-unset SteamAppId
+    if [ -d "$CG" ]; then
+        while read -r pid; do
+            echo "$pid" | sudo tee /sys/fs/cgroup/cgroup.procs >/dev/null
+        done < "$CG/cgroup.procs"
 
-function run_test() {
-    local i="$1"
-    local name="testapp-instance-${i}"
+        sudo rmdir "$CG"
+    fi
 
-    sudo rm -rf /sys/fs/cgroup/lepton-steamlaunch-"${name}"
-    sudo mkdir -p /sys/fs/cgroup/lepton-steamlaunch-"${name}"
-    sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-steamlaunch-${name}/cgroup.procs"
+    sudo mkdir -p "$CG"
+    sudo sh -c "echo $$ > '$CG/cgroup.procs'"
     sudo chown steamos:steamos -R /sys/fs/cgroup
     sudo chmod 777 -R /sys/fs/cgroup
     sudo sh -c "echo "+cpu +cpuset +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control"
@@ -90,6 +86,12 @@ function run_test() {
     fi
 
     ./lepton stop "$name"
+
+    rm -rf \
+        "${STEAM_COMPAT_INSTALL_PATH}" \
+        "${STEAM_COMPAT_DATA_PATH}" \
+        "${STEAM_COMPAT_SHADER_PATH}" \
+        "${STEAM_FOSSILIZE_DUMP_PATH}"
     return 0
 }
 
@@ -99,6 +101,7 @@ export LEPTON_LOCK_TIMEOUT=0
 export LEPTON_APP_LAUNCH_TIMEOUT=10000
 
 export LEPTON_NO_PORT_FORWARDING=true
+
 failed=0
 
 declare -a pids
@@ -114,7 +117,7 @@ for ((i=1; i<=total; i++)); do
         unset 'pids[j]'
     fi
 
-    run_test "$j" &
+    run_test "$i" &
     pids[j]=$!
 done
 
