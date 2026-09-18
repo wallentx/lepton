@@ -286,13 +286,13 @@ function generate_app_launch_rc()
         println "    exec -- /system/bin/sh ${CONTAINER_LAYER_INSTALL_SCRIPT}" >>"${APP_LAUNCH_RC}"
         podman_mount_entry "${HOST_LAYER_INSTALL_SCRIPT}" "${CONTAINER_LAYER_INSTALL_SCRIPT}" ro,U
 
+        # Wait for storage to be mounted
+        println "    exec -- /system/bin/timeout 10 /system/bin/logcat -e \"End Intent.*android.intent.action.MEDIA_MOUNTED\" -m 1" >>"${APP_LAUNCH_RC}"
+
         if debugger_wait_enabled || strace_enabled; then
             println "Adding debugger wait to app launch"
             println "    exec -- /system/bin/sh -c \"$(debugger_wait_commands)\"" >>"${APP_LAUNCH_RC}"
         fi
-
-        # Wait for storage to be mounted
-        println "    exec -- /system/bin/timeout 10 /system/bin/logcat -e \"End Intent.*android.intent.action.MEDIA_MOUNTED.*/storage/emulated/0\" -m 1" >>"${APP_LAUNCH_RC}"
 
         # Run the actual app
         println "    exec -- /system/bin/sh -c \"$(run_app_commands)\"" >>"${APP_LAUNCH_RC}"
