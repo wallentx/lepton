@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 _RED="RED: "
 _GREEN="GREEN: "
 _PLAIN="PLAIN: "

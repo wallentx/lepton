@@ -12,7 +12,7 @@ function check_debugger()
     for app_pid in $(pgrep -af "$1"); do
         tracer_pid="$(awk '/^TracerPid:/ {print $2}' "/proc/${app_pid}/status")"
 
-        test_log "FOUND TRACER PID: ${tracer_pid} $(ps -p "${tracer_pid}" -o comm=)"
+        test_log "FOUND TRACER PID: ${tracer_pid} $(ps -p "${tracer_pid}" -o comm=) ... $2"
         if [[ "${tracer_pid}" -gt 1 ]] &&
            [[ "$(ps -p "${tracer_pid}" -o comm=)" == "$2" ]]; then
             return 0
