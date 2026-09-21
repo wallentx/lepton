@@ -7,14 +7,23 @@ source "$TESTS_DIR"/test-common.sh
 
 function check_debugger()
 {
-    local app_pid tracer_pid
+    local app_pid tracer_pid tracer_comm
 
-    for app_pid in $(pgrep -af "$1"); do
+    for app_pid in /proc/[0-9]*; do
+        app_pid=${app_pid##*/}
+
         tracer_pid="$(awk '/^TracerPid:/ {print $2}' "/proc/${app_pid}/status")"
 
-        test_log "FOUND TRACER PID: ${tracer_pid} $(ps -p "${tracer_pid}" -o comm=) ... $2"
+        if [[ -z "${tracer_pid}" ]]; then
+            continue
+        fi
+
+        tracer_comm="$(ps -p "${tracer_pid}" -o comm= 2>/dev/null)"
+
+        test_log "FOUND TRACER PID: ${app_pid} $(ps -p "${app_pid}" -o comm=) ${tracer_pid} ${tracer_comm} ... $2"
+
         if [[ "${tracer_pid}" -gt 1 ]] &&
-           [[ "$(ps -p "${tracer_pid}" -o comm=)" == "$2" ]]; then
+           [[ "${tracer_comm}" == "$2" ]]; then
             return 0
         fi
     done
@@ -545,12 +554,13 @@ LOGCAT_PID="$!"
 (LEPTON_DEBUG_LAUNCH=true ./lepton start test-apk.apk || test_log "container test-apk.apk failed to start, test will timeout.") &
 
 wait_for_boot test-apk.apk
-
+echo "BEFORE WAIT_FOR_DEBUGGER $SECONDS"
 timeout 20s bash -c '
   until [[ "$(./lepton run test-apk.apk getprop ro.lepton.wait_for_debugger)" == "true" ]]; do
     sleep 1
   done
 '
+echo "BEFORE READY_FOR_DEBUGGER $SECONDS"
 
 if ! timeout 10s bash -c '
     while [[ "$(./lepton run test-apk.apk getprop ro.lepton.ready_for_debugger)" != "true" ]]; do
@@ -562,6 +572,7 @@ if ! timeout 10s bash -c '
 fi
 
 unbuffer ./lepton lldb_attach test-apk.apk &
+echo "BEFORE LLDB_SERVER $SECONDS"
 
 timeout 20s bash -c '
   until pgrep "lldb-server" >/dev/null; do
@@ -574,6 +585,7 @@ if [[ -z "$(pgrep lldb-server)" ]]; then
     test_failure
 fi
 
+echo "BEFORE LLDB $SECONDS"
 timeout 20s bash -c '
   until pgrep -x "lldb" >/dev/null; do
     sleep 1
@@ -584,18 +596,20 @@ if [[ -z "$(pgrep -x lldb)" ]]; then
     test_log "lepton lldb_attach (LEPTON_DEBUG_LAUNCH) failed, no lldb!"
     test_failure
 fi
+echo "BEFORE DEADLINE $SECONDS"
 
 deadline=$((SECONDS + 120))
 while ! check_debugger com.example.neon42 lldb-server; do
     if (( SECONDS >= deadline )); then
         test_log "lepton lldb_attach failed during wait_for_debugger test, not attached to right process!"
         ./lepton run test-apk.apk ps -A
-	ps fax
+        ps fax
         test_failure
         break
     fi
     sleep 0.5
 done
+echo "BEFORE STOP $SECONDS"
 
 ./lepton stop test-apk.apk
 

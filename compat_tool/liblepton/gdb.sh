@@ -120,9 +120,10 @@ function kill_lldb_server()
 function gdb_attach_to_server()
 {
     local PORT="${1:-$(gdb_port)}"
-    if [[ "$(podman_attach sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
-        while [[ "$(podman_attach sh -c "getprop ro.lepton.ready_for_debugger")" == "" ]]; do
-            echo "Waiting for lepton.ready_for_debugger."
+    if [[ "$(podman_attach --no-term sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
+        while [[ "$(podman_attach --no-term sh -c "getprop ro.lepton.ready_for_debugger")" != "true" ]]; do
+            println "Waiting for lepton.ready_for_debugger."
+            sleep 1
         done
     fi
     unlock_lepton
@@ -136,9 +137,10 @@ function gdb_attach_to_server()
 function lldb_attach_to_server()
 {
     local PORT="${1:-$(lldb_port)}"
-    if [[ "$(podman_attach sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
-        while [[ "$(podman_attach sh -c "getprop ro.lepton.ready_for_debugger")" == "" ]]; do
-            echo "Waiting for lepton.ready_for_debugger."
+    if [[ "$(podman_attach --no-term sh -c "getprop ro.lepton.wait_for_debugger")" == "true" ]]; then
+        while [[ "$(podman_attach --no-term sh -c "getprop ro.lepton.ready_for_debugger")" != "true" ]]; do
+            println "Waiting for lepton.ready_for_debugger."
+            sleep 1
         done
     fi
     unlock_lepton
