@@ -692,17 +692,14 @@ function list_live_contexts()
 function is_context_live()
 {
     local CONTEXT="${1:-${LEPTON_CONTEXT}}"
-    local STATE="$(podman inspect -f '{{ .State.Status }}' "lepton-${CONTEXT}" 2>/dev/null || true)"
-    if [[ "${STATE}" == "running" ]]; then
-        return 0
-    fi
+
+    list_live_contexts | grep -Fxq "${CONTEXT}" && return 0
 
     if ! is_steamlaunch "${CONTEXT}"; then
         for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
             if [[ "$(grep "\"name\"" "${GAME}" | cut -d'"' -f4)" == "${CONTEXT}" ]]; then
-                STEAMLAUNCH_CONTEXT="steamlaunch-$(grep "\"appid\"" "${GAME}" | cut -d'"' -f4)"
-                local STATE="$(podman inspect -f '{{ .State.Status }}' "lepton-${STEAMLAUNCH_CONTEXT}" 2>/dev/null || true)"
-                [[ "${STATE}" == "running" ]]
+                local STEAMLAUNCH_CONTEXT="steamlaunch-$(grep "\"appid\"" "${GAME}" | cut -d'"' -f4)"
+                list_live_contexts | grep -Fxq "${STEAMLAUNCH_CONTEXT}"
                 return $?
             fi
         done
