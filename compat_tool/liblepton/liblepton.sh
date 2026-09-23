@@ -653,9 +653,9 @@ function list_android_games()
 {
     STEAMAPPS_PATH="${HOME}/.local/share/Steam/steamapps"
     for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-        INSTALLDIR="$(grep installdir "${GAME}" | cut -d'"' -f4)"
+        INSTALLDIR="$(grep "\"installdir\"" "${GAME}" | cut -d'"' -f4)"
         if compgen -G "${STEAMAPPS_PATH}/common/${INSTALLDIR}/*.apk" >/dev/null; then
-            println "\"$(grep name "${GAME}" | cut -d'"' -f4)\""
+            println "\"$(grep "\"name\"" "${GAME}" | cut -d'"' -f4)\""
         fi
     done
 }
@@ -664,10 +664,10 @@ function list_live_android_games()
 {
     STEAMAPPS_PATH="${HOME}/.local/share/Steam/steamapps"
     for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-        GAMENAME="$(grep name "${GAME}" | cut -d'"' -f4)"
+        GAMENAME="$(grep "\"name\"" "${GAME}" | cut -d'"' -f4)"
         if [[ "${GAMENAME}" == "${1:-}"* ]]; then
-            INSTALLDIR="$(grep installdir "${GAME}" | cut -d'"' -f4)"
-            APPID="$(grep appid "${GAME}" | cut -d'"' -f4)"
+            INSTALLDIR="$(grep "\"installdir\"" "${GAME}" | cut -d'"' -f4)"
+            APPID="$(grep "\"appid\"" "${GAME}" | cut -d'"' -f4)"
             if is_context_live steamlaunch-"${APPID}" && compgen -G "${STEAMAPPS_PATH}/common/${INSTALLDIR}/*.apk" >/dev/null; then
                 println "\"${GAMENAME}\""
             fi
@@ -699,8 +699,8 @@ function is_context_live()
 
     if ! is_steamlaunch "${CONTEXT}"; then
         for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-            if [[ "$(grep name "${GAME}" | cut -d'"' -f4)" == "${CONTEXT}" ]]; then
-                STEAMLAUNCH_CONTEXT="steamlaunch-$(grep appid "${GAME}" | cut -d'"' -f4)"
+            if [[ "$(grep "\"name\"" "${GAME}" | cut -d'"' -f4)" == "${CONTEXT}" ]]; then
+                STEAMLAUNCH_CONTEXT="steamlaunch-$(grep "\"appid\"" "${GAME}" | cut -d'"' -f4)"
                 local STATE="$(podman inspect -f '{{ .State.Status }}' "lepton-${STEAMLAUNCH_CONTEXT}" 2>/dev/null || true)"
                 [[ "${STATE}" == "running" ]]
                 return $?
@@ -843,9 +843,9 @@ function determine_app()
         # Might be the name of a game, let's see.
         # This might be slow when there's a ton of games, but it's kind of a debug option anyways.
         for GAME in ${STEAMAPPS_PATH}/appmanifest_*.acf; do
-            if [[ "$(grep name "${GAME}" | cut -d'"' -f4)" == "${LEPTON_CONTEXT}" ]]; then
-                export SteamAppId="$(grep appid "${GAME}" | cut -d'"' -f4)"
-                export STEAM_COMPAT_INSTALL_PATH="${STEAMAPPS_PATH}/common/$(grep installdir "${GAME}" | cut -d'"' -f4)"
+            if [[ "$(grep "\"name\"" "${GAME}" | cut -d'"' -f4)" == "${LEPTON_CONTEXT}" ]]; then
+                export SteamAppId="$(grep "\"appid\"" "${GAME}" | cut -d'"' -f4)"
+                export STEAM_COMPAT_INSTALL_PATH="${STEAMAPPS_PATH}/common/$(grep "\"installdir\"" "${GAME}" | cut -d'"' -f4)"
                 export STEAM_COMPAT_DATA_PATH="${STEAMAPPS_PATH}/compatdata/${SteamAppId}"
                 # We don't know what the library paths would be, so just make sure we mount everything
                 export STEAM_COMPAT_LIBRARY_PATHS="${STEAMAPPS_PATH}"
