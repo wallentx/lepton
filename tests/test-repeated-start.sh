@@ -3,8 +3,8 @@
 TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "$TESTS_DIR"/test-common.sh
 
-max_parallel=10
-total=50
+max_parallel=$(( $(nproc) / 2 ))
+total=100
 
 function run_test() {
     local i="$1"
