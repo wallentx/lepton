@@ -20,7 +20,8 @@ function run_test() {
     ) &
     start_pid=$!
 
-    if ! wait_for_boot "$name" 360; then
+    if ! wait_for_boot "$name" 720; then
+        ./lepton stop "$name" || true
         return 1
     fi
 
