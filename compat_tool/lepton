@@ -58,7 +58,7 @@ fi
 # This lock guards against multiple commands running at the same time
 # which would be problematic for e.g. start due to the port assignments.
 exec {LEPTON_LOCKFD}>/tmp/lepton.lock
-if ! flock --timeout 10 "${LEPTON_LOCKFD}"; then
+if ! flock --timeout "${LEPTON_LOCK_TIMEOUT:-10}" "${LEPTON_LOCKFD}"; then
     echo "WARNING: Failed to acquire the lepton lock (initial)."
 fi
 
@@ -378,7 +378,7 @@ case "${COMMAND}" in
         APP_ID="$(extract_app_id "${3}")"
         APP_ACTIVITY="$(extract_app_activity "${3}" || true)"
         install_app "${3}"
-        if [[ " $@ " == *" --wait-for-debugger "* ]] || debugger_wait_enabled; then
+        if [[ " $* " == *" --wait-for-debugger "* ]] || debugger_wait_enabled; then
             println "Setting ${APP_ID} to wait for debugger..."
             podman_attach sh -c "$(debugger_wait_commands)"
         fi

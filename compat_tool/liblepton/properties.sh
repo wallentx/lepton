@@ -79,7 +79,7 @@ function setup_props()
 
         # Tell Fossilize to write out shaders to this directory
         if is_app && [[ -n "${STEAM_FOSSILIZE_DUMP_PATH:-}" ]]; then
-            local DUMP_SUBPATH="${STEAM_FOSSILIZE_DUMP_PATH#${STEAM_COMPAT_SHADER_PATH}/}"
+            local DUMP_SUBPATH="${STEAM_FOSSILIZE_DUMP_PATH#"${STEAM_COMPAT_SHADER_PATH}"/}"
             props_echo "debug.fossilize.dump_path=/data/shaders/${DUMP_SUBPATH}"
             props_echo "mesa.shader.cache.disable=false"
             props_echo "mesa.shader.cache.dir=/data/shaders"
@@ -136,7 +136,7 @@ function setup_props()
         props_echo "lepton.headless=true"
     fi
 
-    props_echo "lepton.active_app_launch_timeout=60"
+    props_echo "lepton.active_app_launch_timeout=${LEPTON_APP_LAUNCH_TIMEOUT:-60}"
 
     # Tell `libsteam_api.so` where to find `libsteamclient.so`
     props_echo "lepton.steamclient.path=/system/lib64/libsteamclient.so"

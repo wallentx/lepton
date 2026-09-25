@@ -71,7 +71,7 @@ _lepton_completions()
     fi
     # Determine the apk if there are multiple
     if (( "${#COMP_WORDS[@]}" == 4 )) && [[ "${COMP_WORDS[1]}" == "start" ]]; then
-        GAME=$(echo $3 | sed "s|\\\\||g")
+        GAME=$(echo "$3" | sed "s|\\\\||g")
         if [[ "${GAME}" != *".apk" ]]; then
             while IFS= read -r app; do
                 COMPREPLY+=( "$(basename "$app")" )

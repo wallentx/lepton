@@ -3,23 +3,31 @@
 set -euo pipefail
 
 TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $TESTS_DIR/test-common.sh
+source "$TESTS_DIR"/test-common.sh
 
-function find_serverpid()
+function check_debugger()
 {
-    local app_pid tracer tracer_ppid
+    local app_pid tracer_pid tracer_comm
 
-    for app_pid in $(pidof "$1"); do
-        for tracer in $(pidof "$2"); do
-            tracer_ppid="$(awk '/^TracerPid:/ {print $2}' "/proc/${app_pid}/status")"
-            while [[ -n "${tracer_ppid}" && "${tracer_ppid}" -gt 1 ]]; do
-                if [[ "${tracer}" == "${tracer_ppid}" ]]; then
-                    return 0
-                fi
-                tracer_ppid="$(awk '/^PPid:/ {print $2}' "/proc/$tracer_ppid/status")"
-            done
-        done
+    for app_pid in /proc/[0-9]*; do
+        app_pid=${app_pid##*/}
+
+        tracer_pid="$(awk '/^TracerPid:/ {print $2}' "/proc/${app_pid}/status")"
+
+        if [[ -z "${tracer_pid}" ]]; then
+            continue
+        fi
+
+        tracer_comm="$(ps -p "${tracer_pid}" -o comm= 2>/dev/null)"
+
+        test_log "FOUND TRACER PID: ${app_pid} $(ps -p "${app_pid}" -o comm=) ${tracer_pid} ${tracer_comm} ... $2"
+
+        if [[ "${tracer_pid}" -gt 1 ]] &&
+           [[ "${tracer_comm}" == "$2" ]]; then
+            return 0
+        fi
     done
+
     return 1
 }
 
@@ -112,9 +120,9 @@ wait_for_app test-apk.apk com.example.neon42
 
 ./lepton gdb_server test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof gdbserver64)" == "" ]]; then
+if [[ -z "$(pgrep gdbserver64)" ]]; then
     test_log "lepton gdb_server failed!"
     test_failure
 fi
@@ -123,7 +131,7 @@ fi
 
 kill "${LOGCAT_PID}"
 
-if [[ "$(pidof gdbserver64)" != "" ]]; then
+if [[ "$(pgrep gdbserver64)" != "" ]]; then
     test_log "lepton gdb_server failed after stopping!"
     test_failure
 fi
@@ -137,20 +145,20 @@ LOGCAT_PID="$!"
 
 wait_for_boot test-apk.apk
 
-sleep 3
+wait_for_app test-apk.apk com.example.neon42
 
 ./lepton gdb_server test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof gdbserver64)" == "" ]]; then
-    test_log "lepton gdb_server failed!"
+if [[ -z "$(pgrep gdbserver64)" ]]; then
+    test_log "lepton gdb_server failed (2)!"
     test_failure
 fi
 
 ./lepton kill_gdb_server test-apk.apk
 
-if [[ "$(pidof gdbserver64)" != "" ]]; then
+if [[ "$(pgrep gdbserver64)" != "" ]]; then
     test_log "lepton gdb_server failed after kill!"
     test_failure
 fi
@@ -172,21 +180,21 @@ wait_for_app test-apk.apk com.example.neon42
 
 unbuffer ./lepton gdb_attach test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof gdbserver64)" == "" ]]; then
+if [[ -z "$(pgrep gdbserver64)" ]]; then
     test_log "lepton gdb_attach failed, no gdbserver!"
     test_failure
 fi
 
 sleep 3
 
-if [[ "$(pidof gdb)" == "" ]]; then
+if [[ -z "$(pidof gdb)" ]]; then
     test_log "lepton gdb_attach failed, no gdb!"
     test_failure
 fi
 
-if ! find_serverpid com.example.neon42 gdbserver64; then
+if ! check_debugger com.example.neon42 gdbserver64; then
     test_log "lepton gdb_attach failed, not attached to right process!"
     test_failure
 fi
@@ -209,9 +217,9 @@ wait_for_app test-apk.apk com.example.neon42
 
 ./lepton gdb_server test-apk.apk
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof gdbserver64)" == "" ]]; then
+if [[ -z "$(pgrep gdbserver64)" ]]; then
     test_log "lepton gdb_attach after gdb_server test failed, no gdbserver!"
     test_failure
 fi
@@ -225,21 +233,21 @@ fi
 
 unbuffer ./lepton gdb_attach test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof gdbserver64)" == "" ]]; then
+if [[ -z "$(pgrep gdbserver64)" ]]; then
     test_log "lepton gdb_attach after gdb_server failed, no gdbserver after attach!"
     test_failure
 fi
 
 sleep 3
 
-if [[ "$(pidof gdb)" == "" ]]; then
+if [[ -z "$(pidof gdb)" ]]; then
     test_log "lepton gdb_attach (gdb_server test) failed, no gdb!"
     test_failure
 fi
 
-if ! find_serverpid com.example.neon42 gdbserver64; then
+if ! check_debugger com.example.neon42 gdbserver64; then
     test_log "lepton gdb_attach failed, not attached to right process (2)!"
     test_failure
 fi
@@ -262,9 +270,9 @@ wait_for_app test-apk.apk com.example.neon42
 
 ./lepton lldb_server test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
+if [[ -z "$(pgrep lldb-server)" ]]; then
     test_log "lepton lldb_server failed!"
     test_failure
 fi
@@ -273,7 +281,7 @@ fi
 
 kill "${LOGCAT_PID}"
 
-if [[ "$(pidof lldb-server)" != "" ]]; then
+if [[ "$(pgrep lldb-server)" != "" ]]; then
     test_log "lepton lldb_server failed after stopping!"
     test_failure
 fi
@@ -287,20 +295,20 @@ LOGCAT_PID="$!"
 
 wait_for_boot test-apk.apk
 
-sleep 3
+wait_for_app test-apk.apk com.example.neon42
 
 ./lepton lldb_server test-apk.apk &
 
-sleep 3
+sleep 10
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
+if [[ -z "$(pgrep lldb-server)" ]]; then
     test_log "lepton lldb_server failed!"
     test_failure
 fi
 
 ./lepton kill_lldb_server test-apk.apk
 
-if [[ "$(pidof lldb-server)" != "" ]]; then
+if [[ "$(pgrep lldb-server)" != "" ]]; then
     test_log "lepton lldb_server failed after kill!"
     test_failure
 fi
@@ -322,26 +330,36 @@ wait_for_app test-apk.apk com.example.neon42
 
 unbuffer ./lepton lldb_attach test-apk.apk &
 
-sleep 3
+timeout 20s bash -c '
+  until pgrep "lldb-server" >/dev/null; do
+    sleep 1
+  done
+'
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
+if [[ -z "$(pgrep lldb-server)" ]]; then
     test_log "lepton lldb_attach failed, no lldbserver!"
     test_failure
 fi
 
-if [[ "$(pidof lldb)" == "" ]]; then
+timeout 20s bash -c '
+  until pgrep -x "lldb" >/dev/null; do
+    sleep 1
+  done
+'
+
+if [[ -z "$(pgrep -x lldb)" ]]; then
     test_log "lepton lldb_attach failed, no lldb!"
     test_failure
 fi
 
-if ! find_serverpid com.example.neon42 lldb-server; then
+if ! check_debugger com.example.neon42 lldb-server; then
     test_log "lepton lldb_attach failed, not attached to right process!"
     test_failure
 fi
 
 ./lepton stop test-apk.apk
 
-killall lldb || true
+killall -9 lldb || true
 kill "${LOGCAT_PID}"
 
 test_log "Testing lldb_attach after lldb_server"
@@ -357,31 +375,41 @@ wait_for_app test-apk.apk com.example.neon42
 
 ./lepton lldb_server test-apk.apk
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
+if [[ -z "$(pgrep lldb-server)" ]]; then
     test_log "lepton lldb_attach after lldb_server test failed, no lldbserver!"
     test_failure
 fi
 
-if [[ "$(pidof lldb)" != "" ]]; then
+if [[ "$(pgrep -x lldb)" != "" ]]; then
     test_log "lepton lldb_attach after lldb_server test failed, lldb already present!"
     test_failure
 fi
 
 unbuffer ./lepton lldb_attach test-apk.apk &
 
-sleep 3
+timeout 20s bash -c '
+  until pgrep "lldb-server" >/dev/null; do
+    sleep 1
+  done
+'
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
+if [[ -z "$(pgrep lldb-server)" ]]; then
     test_log "lepton lldb_attach after lldb_server failed, no lldbserver after attach!"
     test_failure
 fi
 
-if [[ "$(pidof lldb)" == "" ]]; then
-    test_log "lepton lldb_attach failed, no lldb!"
+timeout 20s bash -c '
+  until pgrep -x "lldb" >/dev/null; do
+    sleep 1
+  done
+'
+
+if [[ -z "$(pgrep -x lldb)" ]]; then
+    test_log "lepton lldb_attach failed, no lldb (2)!"
     test_failure
 fi
 
-if ! find_serverpid com.example.neon42 lldb-server; then
+if ! check_debugger com.example.neon42 lldb-server; then
     test_log "lepton lldb_attach failed, not attached to right process (2)!"
     test_failure
 fi
@@ -526,41 +554,62 @@ LOGCAT_PID="$!"
 (LEPTON_DEBUG_LAUNCH=true ./lepton start test-apk.apk || test_log "container test-apk.apk failed to start, test will timeout.") &
 
 wait_for_boot test-apk.apk
+echo "BEFORE WAIT_FOR_DEBUGGER $SECONDS"
+timeout 20s bash -c '
+  until [[ "$(./lepton run test-apk.apk getprop ro.lepton.wait_for_debugger)" == "true" ]]; do
+    sleep 1
+  done
+'
+echo "BEFORE READY_FOR_DEBUGGER $SECONDS"
 
-sleep 3
-
-if [[ "$(./lepton run test-apk.apk getprop ro.lepton.wait_for_debugger)" != "true" ]]; then
-    test_log "test failed because ro.lepton.wait_for_debugger is not true!"
-    test_failure
-fi
-
-sleep 3
-
-if [[ "$(./lepton run test-apk.apk getprop ro.lepton.ready_for_debugger)" != "true" ]]; then
+if ! timeout 10s bash -c '
+    while [[ "$(./lepton run test-apk.apk getprop ro.lepton.ready_for_debugger)" != "true" ]]; do
+        sleep 1
+    done
+'; then
     test_log "test failed because ro.lepton.ready_for_debugger is not true!"
     test_failure
 fi
 
 unbuffer ./lepton lldb_attach test-apk.apk &
+echo "BEFORE LLDB_SERVER $SECONDS"
 
-sleep 3
+timeout 20s bash -c '
+  until pgrep "lldb-server" >/dev/null; do
+    sleep 1
+  done
+'
 
-if [[ "$(pidof lldb-server)" == "" ]]; then
-    test_log "lepton lldb_attach failed, no lldbserver!"
+if [[ -z "$(pgrep lldb-server)" ]]; then
+    test_log "lepton lldb_attach failed, no lldbserver (2)!"
     test_failure
 fi
 
-sleep 3
+echo "BEFORE LLDB $SECONDS"
+timeout 20s bash -c '
+  until pgrep -x "lldb" >/dev/null; do
+    sleep 1
+  done
+'
 
-if [[ "$(pidof lldb)" == "" ]]; then
+if [[ -z "$(pgrep -x lldb)" ]]; then
     test_log "lepton lldb_attach (LEPTON_DEBUG_LAUNCH) failed, no lldb!"
     test_failure
 fi
+echo "BEFORE DEADLINE $SECONDS"
 
-if ! find_serverpid com.example.neon42 lldb-server; then
-    test_log "lepton lldb_attach failed during wait_for_debugger test, not attached to right process!"
-    test_failure
-fi
+deadline=$((SECONDS + 120))
+while ! check_debugger com.example.neon42 lldb-server; do
+    if (( SECONDS >= deadline )); then
+        test_log "lepton lldb_attach failed during wait_for_debugger test, not attached to right process!"
+        ./lepton run test-apk.apk ps -A
+        ps fax
+        test_failure
+        break
+    fi
+    sleep 0.5
+done
+echo "BEFORE STOP $SECONDS"
 
 ./lepton stop test-apk.apk
 

@@ -8,16 +8,16 @@ function collect_debug_logs()
     local CONSOLE_LOG="${LOG_PATH}/console_log.txt"
 
     local LEPTON_COMPAT_VERSION="$(pacman -Q | grep -E lepton-compat)"
-    local STEAMOS_VERSION=$(source /etc/os-release; echo $BUILD_ID)
+    local STEAMOS_VERSION=$(source /etc/os-release; echo "$BUILD_ID")
     local STEAMVR_VERSION="$(pacman -Q | grep -E 'deckard-steamvr-(main|rel)')"
-    local STEAM_VERSION="$(cat ${HOME}/.steam/steam/package/steam_client_$(cat ${HOME}/.steam/steam/package/beta)_linuxarm64.manifest | grep version | awk '{ print $2 }' | xargs)"
+    local STEAM_VERSION="$(cat "${HOME}"/.steam/steam/package/steam_client_$(cat "${HOME}"/.steam/steam/package/beta)_linuxarm64.manifest | grep version | awk '{ print $2 }' | xargs)"
     local LEPTON_VERSION="$(lepton_version)"
     local LEPTON_ROOTFS_VERSION="$(lepton_rootfs_version)"
 
-    local LEPTON_BUILD_ID="$(cat ${STEAM_BASE_FOLDER}/steamapps/appmanifest_${LEPTON_BASE_ID}.acf | grep buildid | awk '{ print $2 }' | xargs)"
+    local LEPTON_BUILD_ID="$(cat "${STEAM_BASE_FOLDER}"/steamapps/appmanifest_${LEPTON_BASE_ID}.acf | grep buildid | awk '{ print $2 }' | xargs)"
 
     local TIMESTAMP="$(date +%s)"
-    local DATE="$(date +%Y-%m-%d_%H-%M-%S -d @${TIMESTAMP})"
+    local DATE="$(date +%Y-%m-%d_%H-%M-%S -d @"${TIMESTAMP}")"
 
     local TMP_DIR="$(mktemp -d)"
 

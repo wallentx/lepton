@@ -47,6 +47,8 @@ sudo chown steamos:steamos /dev/kmsg
 # We need to run with sw graphics on gitlab ci:
 export LEPTON_FORCE_SOFTWARE=true
 
+total=$(grep '^total=' "${OWD}/tests/test-repeated-start.sh" | cut -d= -f2-)
+
 sudo mkdir -p /sys/fs/cgroup
 sudo mount -t cgroup2 none /sys/fs/cgroup
 
@@ -59,6 +61,10 @@ sudo mkdir -p /sys/fs/cgroup/lepton-bootchart
 sudo mkdir -p /sys/fs/cgroup/lepton-steamlaunch-3418470
 sudo mkdir -p /sys/fs/cgroup/lepton-test-vulkan.apk
  
+for ((i=1; i<=total; i++)); do
+    sudo mkdir -p /sys/fs/cgroup/lepton-test-instance-${i}
+done
+
 sudo chown steamos:steamos -R /sys/fs/cgroup
 sudo chmod 777 -R /sys/fs/cgroup
  
@@ -71,7 +77,9 @@ sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-bootchart/cgroup.procs"
 sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-steamlaunch-3418470/cgroup.procs"
 sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-test-vulkan.apk/cgroup.procs"
 
-sudo sh -c "echo "+cpu +cpuset +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control"
+for ((i=1; i<=total; i++)); do
+    sudo sh -c "echo $$ > /sys/fs/cgroup/lepton-test-instance-${i}/cgroup.procs"
+done
 
 sudo tee /etc/containers/containers.conf >/dev/null <<'EOF'
 [engine]
@@ -87,6 +95,7 @@ sudo chown steamos:steamos "${OWD}/test-trace.log"
 exec {xtrace_fd}> "${OWD}/test-trace.log"
 export BASH_XTRACEFD="${xtrace_fd}"
 export LEPTON_DEBUG=true
+export PS4='+ pid=$$ tid=? '
 
 sudo touch "${OWD}/test-dmesg.log"
 sudo chown steamos:steamos "${OWD}/test-dmesg.log"
@@ -131,11 +140,11 @@ case "$1" in
     11)
         ${OWD}/tests/test-proxy.sh
         ;;
-    1[2-9]|2[0-9]|3[0-1])
-        ${OWD}/tests/test-repeated-start.sh
-        ;;
-    32)
+    12)
         ${OWD}/tests/test-realpath.sh
+        ;;
+    13)
+        ${OWD}/tests/test-repeated-start.sh
         ;;
 esac
 

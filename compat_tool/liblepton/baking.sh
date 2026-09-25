@@ -67,8 +67,8 @@ function autobake()
     else
         # The depot does not contain xattrs, so we need to restore them from a
         # file. We perform this always in case someone interrupted the process.
-        pushd "${LEPTON_DIR}"/.. >/dev/null
+        pushd "${LEPTON_DIR}"/.. >/dev/null || exit
         setfattr --restore "${LEPTON_DIR}"/../sysbake.xattrs
-        popd >/dev/null
+        popd >/dev/null || exit
     fi
 }

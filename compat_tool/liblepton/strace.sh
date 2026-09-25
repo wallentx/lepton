@@ -6,7 +6,7 @@ function strace_enabled()
 function strace_zygote_commands()
 {
     echo -n "exec >>/data/strace-$(get_app_id).debug 2>>/data/strace-$(get_app_id).debug; "
-    echo -n "strace ${LEPTON_STRACE_ARGS:-} -v -s 1024 -f -p \"\${ro.lepton.application_pid}\" -o /data/strace-$(get_app_id).log;"
+    echo -n "strace ${LEPTON_STRACE_ARGS:-} -v -s 1024 -f -p \`pgrep -f $(get_app_id) | head -1\` -o /data/strace-$(get_app_id).log;"
 }
 
 function extract_strace()
