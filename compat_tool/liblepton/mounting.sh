@@ -79,7 +79,7 @@ function setup_mounts()
     # lowerdirs with the rootfs
     GUESTOS_OVERLAY="/usr/share/guestos/android"
 
-    for OVERLAY in ${LEPTON_OVERLAY} ${GUESTOS_OVERLAY}; do
+    for OVERLAY in "${LEPTON_OVERLAY}" "${GUESTOS_OVERLAY}"; do
         pushd "${OVERLAY}" >/dev/null || exit
         while IFS= read -r -d '' file; do
             DST="${file#./}"
