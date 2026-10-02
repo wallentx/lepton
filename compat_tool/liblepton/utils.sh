@@ -108,7 +108,9 @@ function log_to_file()
 {
     local LEPTON_LOG_FILE="$(lepton_log_file)"
 
-    exec 1> >(uninherit_lepton_lock; grep --line-buffered -v "skipping destruction (fork without exec?)" | grep --line-buffered -v "from LD_PRELOAD cannot be preloaded" | tee -a "${LEPTON_LOG_FILE}" || true) 2>&1
+    mv "${LEPTON_LOG_FILE}" "${LEPTON_LOG_FILE%.log}.prev.log" 2>/dev/null || true
+
+    exec 1> >(uninherit_lepton_lock; grep --line-buffered -v "skipping destruction (fork without exec?)" | grep --line-buffered -v "from LD_PRELOAD cannot be preloaded" | tee "${LEPTON_LOG_FILE}" || true) 2>&1
 
     # When we start logging to file, we want to make it easy to differentiate different runs, so let's print empty lines, the date, and the PID:
     printf "\n\nLepton %s (rootfs %s) starting up at %s\n" "$(lepton_version)" "$(lepton_rootfs_version)" "$(date)"
