@@ -1,0 +1,35 @@
+name: Upload build artifacts
+description: Preserve workspace paths and permissions in an artifact archive.
+inputs:
+  name:
+    description: Unique artifact name.
+    required: true
+  paths:
+    description: Newline-separated workspace paths.
+    required: true
+runs:
+  using: composite
+  steps:
+  - name: Pack artifacts
+    id: pack
+    if: always()
+    shell: bash
+    env:
+      ARTIFACT_PATHS: ${{ inputs.paths }}
+    run: |
+      files=()
+      while IFS= read -r path; do
+        if [[ -e "$path" ]]; then files+=("$path"); fi
+      done <<< "$ARTIFACT_PATHS"
+      if (( ${#files[@]} == 0 )); then
+        echo 'No artifact files were produced' >&2
+        exit 1
+      fi
+      tar -cf ci-artifacts.tar "${files[@]}"
+  - uses: actions/upload-artifact@v7
+    if: always() && steps.pack.outcome == 'success'
+    with:
+      name: ${{ inputs.name }}
+      path: ci-artifacts.tar
+      compression-level: 0
+      if-no-files-found: error

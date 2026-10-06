@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - x86_64-linux-kvm-docker
+    - x86_64-linux-kvm-docker-largedisk
+    - aarch64-linux-docker-privileged
+    - aarch64-linux-docker-heavy-privileged

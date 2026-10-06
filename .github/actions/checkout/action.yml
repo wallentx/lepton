@@ -1,0 +1,25 @@
+name: Initialize submodules
+description: Fetch recursive submodules using temporary GitLab credentials.
+inputs:
+  username:
+    description: GitLab source username.
+    required: true
+  password:
+    description: GitLab source token.
+    required: true
+runs:
+  using: composite
+  steps:
+  - name: Fetch submodules
+    shell: bash
+    env:
+      BUILD_TOKEN_USER: ${{ inputs.username }}
+      BUILD_TOKEN_PASSWORD: ${{ inputs.password }}
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: credential.https://gitlab.steamos.cloud.helper
+      GIT_CONFIG_VALUE_0: '!f() { if [ "$1" = get ]; then printf ''username=%s\npassword=%s\n'' "$BUILD_TOKEN_USER"
+        "$BUILD_TOKEN_PASSWORD"; fi; }; f'
+    run: |
+      git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      git submodule sync --recursive
+      git submodule update --init --recursive

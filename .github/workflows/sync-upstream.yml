@@ -1,0 +1,49 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: '23 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out GitHub main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward GitHub main from GitLab main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags https://gitlab.steamos.cloud/frame-public/lepton.git \
+            refs/heads/main:refs/remotes/upstream/main
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+
+          current=$(git rev-parse refs/remotes/origin/main)
+          upstream=$(git rev-parse refs/remotes/upstream/main)
+
+          if [[ "$current" == "$upstream" ]]; then
+            echo "GitHub main already matches upstream at $upstream." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$current" "$upstream"; then
+            echo '::error::GitHub main contains commits absent from upstream main. The sync cannot fast-forward.'
+            exit 1
+          fi
+
+          git push origin refs/remotes/upstream/main:refs/heads/main
+          echo "GitHub main advanced from $current to $upstream." >> "$GITHUB_STEP_SUMMARY"

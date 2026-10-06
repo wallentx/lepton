@@ -1,0 +1,16 @@
+name: Download build artifacts
+description: Restore workspace paths and permissions from an artifact archive.
+inputs:
+  name:
+    description: Artifact name from the current workflow run.
+    required: true
+runs:
+  using: composite
+  steps:
+  - uses: actions/download-artifact@v8
+    with:
+      name: ${{ inputs.name }}
+  - shell: bash
+    run: |
+      tar -xpf ci-artifacts.tar
+      rm ci-artifacts.tar
