@@ -16,6 +16,8 @@ APK_AUTO_INSTALL_DIR="${HOME}/lepton_auto_install_apks"
 
 ADB="/usr/lib/android-sdk/platform-tools/adb"
 
+MDNS_PUBLISH_PATH="${LEPTON_DIR}/mdns_publisher/bin/lepton-mdns-publish"
+
 # Include our libraries of functionality
 source "${LEPTON_DIR}/utils.sh"
 source "${LEPTON_DIR}/networking.sh"
@@ -317,7 +319,7 @@ function start_container()
         (
             uninherit_lepton_lock
 
-            exec avahi-publish-service "lepton-${CONTEXT}" _adb._tcp "$(adb_port)" device="Lepton" model="Valve" version="30" >/dev/null 2>/dev/null
+            exec "${MDNS_PUBLISH_PATH}" "lepton-${CONTEXT}" _adb._tcp "$(adb_port)" device=Lepton model=Valve version=30 >/dev/null 2>/dev/null
         ) &
     fi
 }
