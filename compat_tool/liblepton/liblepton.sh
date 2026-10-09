@@ -433,7 +433,7 @@ function guess_app_pid()
     local PID="$(podman_attach --no-term sh -c "getprop ro.lepton.application_pid" 2>/dev/null)"
     if [[ -n "${PID}" ]]; then
          echo -n "${PID}"
-	 return
+         return
     fi
     local APP_ID="$(podman_attach --no-term sh -c "getprop lepton.active_app_id" 2>/dev/null)"
     if [[ -n "${APP_ID}" ]]; then
@@ -605,14 +605,15 @@ function kill_container()
 
     local LEPTON_PID=$(podman inspect -f '{{ index .Config.Labels "lepton_pid" }}' "lepton-${CONTEXT}" 2>/dev/null || true)
 
-    podman exec -i "lepton-${CONTEXT}" /system/bin/reboot -p 2>/dev/null || true
-    podman stop -t 0 "lepton-${CONTEXT}" 2>/dev/null >/dev/null || true
+    STOP_OUTPUT="$(podman exec -i "lepton-${CONTEXT}" /system/bin/reboot -p 2>&1 || true)"
+    STOP_OUTPUT+="$(podman stop -t 0 "lepton-${CONTEXT}" 2>&1 || true)"
 
     # Can't wait for ourselves:
     if ! is_ancestor_of "${LEPTON_PID}" "$$"; then
         unlock_lepton
 
-        while kill -0 "${LEPTON_PID}" 2>/dev/null; do
+        end=$((SECONDS + 15))
+        while [[ $SECONDS -lt $end ]] && kill -0 "${LEPTON_PID}" 2>/dev/null; do
             println "Waiting for ""${CONTEXT}"" (PID '${LEPTON_PID}') to exit..."
             sleep 1
         done
