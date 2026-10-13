@@ -193,7 +193,7 @@ pre-sysbake-job:
 
 .sysbake-job:
   stage: build
-  image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg:latest
+  image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg-main:latest
   script:
     - uname -a
     - insmod anbox-modules/binder/binder_linux.ko devices=binder,hwbinder,vndbinder || { dmesg; exit 1; }
@@ -273,7 +273,7 @@ build-test-apk-job:
       # Run the repeated start test on a heavier runner
       - RUNNER_TAG: aarch64-linux-docker-heavy-privileged
         SHARD: [13]
-  image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg:latest
+  image: registry.gitlab.steamos.cloud/deckard/deckardos/holo/steamos-arm64-vr-sysimg-main:latest
   script:
     - uname -a
     - insmod anbox-modules/binder/binder_linux.ko devices=binder,hwbinder,vndbinder || { dmesg; exit 1; }
