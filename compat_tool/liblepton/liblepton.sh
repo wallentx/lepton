@@ -319,9 +319,23 @@ function start_container()
         (
             uninherit_lepton_lock
 
-            exec "${MDNS_PUBLISH_PATH}" "lepton-${CONTEXT}" _adb._tcp "$(adb_port)" device=Lepton model=Valve version=30 >/dev/null 2>/dev/null
+	    if "${MDNS_PUBLISH_PATH}" --publish "lepton-${CONTEXT}" _adb._tcp "$(adb_port)" device=Lepton model=Valve version=\"$(android_sdk_version)\" >/dev/null 2>/dev/null; then
+                # For systemd prior to v262 the service exits immediately
+                echo "Activated mdns via systemd-resolved."
+                exec sleep infinity
+            elif command -v avahi-publish-service > /dev/null; then
+                echo "WARNING: Activating mdns via avahi-publish-service fallback."
+                exec "avahi-publish-service" "lepton-${CONTEXT}" _adb._tcp "$(adb_port)" device=Lepton model=Valve version="$(android_sdk_version)" >/dev/null 2>/dev/null
+            else
+                echo "WARNING: Could not publish mdns service, with either systemd-resolved or avahi-publish-service"
+            fi
         ) &
     fi
+}
+
+function cleanup_mdns()
+{
+    "${MDNS_PUBLISH_PATH}" --unpublish "lepton-${LEPTON_CONTEXT}" >/dev/null 2>/dev/null || true
 }
 
 function wait_for_container()
