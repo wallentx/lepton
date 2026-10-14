@@ -506,10 +506,13 @@ function install_app()
         # adb server.
         local ADB_PORT="$(adb_port)"
         local TEMP_PORT=$((ADB_PORT + 10000))
+        # Installing copies the .apk several times and can take minutes on slow
+        # storage. Give up if it takes far longer than that instead of hanging.
+        local INSTALL_TIMEOUT="${LEPTON_APP_INSTALL_TIMEOUT:-600}"
         # Kill first to remove old connections
         "$ADB" -P "${TEMP_PORT}" kill-server 2>/dev/null
         "$ADB" -P "${TEMP_PORT}" connect localhost:"${ADB_PORT}" >/dev/null 2>/dev/null
-        if ! "$ADB" -P "${TEMP_PORT}" -s "localhost:${ADB_PORT}" wait-for-device; then
+        if ! timeout "${INSTALL_TIMEOUT}" "$ADB" -P "${TEMP_PORT}" -s "localhost:${ADB_PORT}" wait-for-device; then
             println "Device did not become available, installation will likely fail!"
         fi
         if ! is_steamlaunch; then
@@ -528,7 +531,12 @@ function install_app()
                 fi
             fi
         fi
-        if ! "$ADB" -P "${TEMP_PORT}" -s localhost:"${ADB_PORT}" install -g "${APK_PATH}"; then
+        local INSTALL_RET=0
+        timeout "${INSTALL_TIMEOUT}" "$ADB" -P "${TEMP_PORT}" -s localhost:"${ADB_PORT}" install -g "${APK_PATH}" || INSTALL_RET=$?
+        if [[ "${INSTALL_RET}" != "0" ]]; then
+            if [[ "${INSTALL_RET}" == "124" ]]; then
+                println "App installation timed out after ${INSTALL_TIMEOUT} seconds!"
+            fi
             println "App installation failed!"
             # We dump logcat if the container exits in less than <30s but just to
             # be safe (in case the startup took longer for some reason), we set

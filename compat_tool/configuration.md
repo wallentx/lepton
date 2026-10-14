@@ -13,6 +13,7 @@
 * ```LEPTON_NO_CONTEXT``` avoid clearing "baked" app data even if it would otherwise be required or recommended. Use with caution and only during development.
 * ```LEPTON_LOCK_TIMEOUT``` maximum time to wait for the lepton.lock. This is mostly a debugging/test option.
 * ```LEPTON_APP_LAUNCH_TIMEOUT``` maximum time to wait until an app is considered as failed to start.
+* ```LEPTON_APP_INSTALL_TIMEOUT``` maximum time in seconds to wait for app installation. Defaults to 600.
 * ```LEPTON_NO_PORT_FORWARDING``` disable automatic port forwarding. This is mostly a debugging/test option.
 
 * Various other environment variables like ```SteamAppId```, ```STEAM_COMPAT_DATA_PATH```, etc. are used to configure the launch of a game via steam.
