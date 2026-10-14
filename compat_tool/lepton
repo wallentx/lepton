@@ -233,7 +233,6 @@ case "${COMMAND}" in
 
             log_moved_dirs "${MOVED_INACCESSIBLE}"
 
-            cleanup_mdns
             kill_descendants
 
             trap "-" INT TERM ERR

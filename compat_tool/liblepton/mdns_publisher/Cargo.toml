@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = "4.6.7"
+signal-hook = "0.4.5"
 zbus = "5.19.0"
 
 # Try to make this as small on disk as possible
