@@ -869,7 +869,7 @@ function determine_app()
         done
     elif [[ "${LEPTON_CONTEXT}" == *".apk" ]]; then
         local APK_FULL_PATH="${LEPTON_CONTEXT}"
-        export LEPTON_CONTEXT="$(basename "${APK_FULL_PATH}")"
+        export LEPTON_CONTEXT="$(basename "${APK_FULL_PATH}" | sed 's/[^a-zA-Z0-9_.-]/_/g')"
 
         if [[ "${IS_START}" == "true" ]]; then
             create_prefix
@@ -886,7 +886,7 @@ function determine_app()
                 export LEPTON_MOUNT_OBB_DIR="$(cd "$(dirname "${APK_FULL_PATH}")/obb" && pwd)"
             fi
 
-            export APP_PATH="${LEPTON_APK_TMPDIR}/$(basename "${LEPTON_CONTEXT}")"
+            export APP_PATH="${LEPTON_APK_TMPDIR}/$(basename "${APK_FULL_PATH}")"
             export STEAM_COMPAT_DATA_PATH="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/compatdata/${LEPTON_CONTEXT}"
             export STEAM_COMPAT_LIBRARY_PATHS="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/compatdata/${LEPTON_CONTEXT}"
             export STEAM_COMPAT_SHADER_PATH="${LEPTON_DATA_DIR}/${1:-${LEPTON_CONTEXT}}/shadercache/${LEPTON_CONTEXT}"
