@@ -323,6 +323,42 @@ tests-14-job:
     - prepare-rootfs-14-job
     - build-test-apk-job
 
+# Once a tag's build artifacts are ready, trigger a lepton-depot pipeline that
+# downloads them and uploads the build to the bleeding-edge Steam branch.
+# Runs on `needs:` so it doesn't have to wait for the test stage; bleeding-edge
+# deploys shouldn't be gated on the test matrix.
+trigger-depot-upload-job:
+  stage: deploy
+  image: ubuntu:24.04
+  rules:
+    # Official release tags only (v<major>.<minor>.<patchlevel>, same pattern
+    # lepton-depot's resolve-job-id.py uses to find releases)
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  needs:
+    - job: build-compat-tool-job
+      artifacts: false
+    - job: sysbake-job
+      artifacts: false
+    - job: sysbake-14-job
+      artifacts: false
+    - job: prepare-rootfs-job
+      artifacts: false
+    - job: prepare-rootfs-14-job
+      artifacts: false
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - apt-get -qq update && apt-get install -y --no-install-recommends curl
+    - >
+      curl --fail --location --request POST
+      --form "token=${LEPTON_DEPOT_TRIGGER_TOKEN}"
+      --form "ref=main"
+      --form "variables[COMPAT_TOOL_VERSION]=${CI_COMMIT_TAG}"
+      --form "variables[ROOTFS_VERSION]=${CI_COMMIT_TAG}"
+      --form "variables[ROOTFS14_VERSION]=${CI_COMMIT_TAG}"
+      --form "variables[PROMOTE_BRANCH]=bleeding-edge"
+      "${CI_API_V4_URL}/projects/deckard%2Flepton-depot/trigger/pipeline"
+
 default:
   tags:
     - x86_64-linux-kvm-docker
