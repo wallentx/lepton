@@ -252,8 +252,10 @@ case "${COMMAND}" in
         if ! is_steamlaunch && ! is_app; then
             continue_boot_after_bake
         elif ! is_app_baked; then
+            clear_app_install_complete
             if install_app; then
                 update_baked_app_metadata
+                mark_app_install_complete
                 # If the app is not baked yet, the container will wait for a
                 # property.
                 continue_boot_after_bake

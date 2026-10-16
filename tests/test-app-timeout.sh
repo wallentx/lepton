@@ -15,8 +15,17 @@ sed -i "/am start/d" liblepton/app_metadata.sh
 (./lepton start test-apk.apk || test_log "container test-apk.apk failed to start, test will timeout.") &
 wait_for_boot test-apk.apk
 
-# on gitlab the container startup itself takes a while
-# so use 80s to be on the safe side
+# The launch timeout only starts once the app has been installed and may launch.
+end=$((SECONDS + 120))
+while [[ "$(./lepton run test-apk.apk getprop ro.lepton.app_baked 2>/dev/null || true)" != "1" ]]; do
+    if (( SECONDS >= end )); then
+        test_log "test-apk.apk was not allowed to launch within 120 seconds."
+        test_failure
+    fi
+    sleep 1
+done
+
+# Allow 80 seconds for the 60-second launch timeout and container teardown.
 sleep 80
 
 if [[ "$(./lepton ps | grep "test-apk.apk" | grep "${_GREEN}")" != "" ]]; then

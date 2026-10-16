@@ -52,9 +52,28 @@ function update_baked_app_metadata()
     fi
 }
 
+# The package manager writes `packages.xml` before we move the app into its
+# overlay. An interrupted install can leave this file behind even if native
+# libraries are missing. Write this marker only after installation is complete.
+function app_install_complete_path()
+{
+    print "$(get_baked_app_data_dir)/app_install_complete"
+}
+
+function mark_app_install_complete()
+{
+    touch "$(app_install_complete_path)"
+}
+
+function clear_app_install_complete()
+{
+    rm -f "$(app_install_complete_path)"
+}
+
 function is_app_baked()
 {
     is_app &&
+    [[ -f "$(app_install_complete_path)" ]] &&
     [[ "$(get_baked_app_data_dir)/data_overlay/system/packages.xml" -nt "$(get_apk_path)" ]] &&
     [[ -n "$(grep "$(get_app_id)" "$(get_baked_app_data_dir)/data_overlay/system/packages.xml" 2>/dev/null)" ]]
 }
