@@ -209,6 +209,9 @@ function setup_podman_base()
         podman_cmdline --cgroupns=private
     fi
 
+    # nice rlimit (prevents binder messages in dmesg)
+    podman_cmdline --ulimit nice=20:20
+
     # capabilities
     podman_cmdline --cap-drop ALL
     podman_cmdline --cap-add audit_control
