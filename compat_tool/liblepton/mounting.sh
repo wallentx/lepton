@@ -368,6 +368,11 @@ function generate_zygote_launch_rc()
         https_proxy
         NO_PROXY
         no_proxy
+
+        # Pass through home since we mount some config directories in the same
+        # locations as on the host such that things can find them the same way
+        # as on regular Linux/SteamOS.
+        HOME
     )
     local ZYGOTE_LAUNCH_RC="$(prefix "${1:-}")/init.zygote64.rc"
     podman_extract_rootfs_file "/system/etc/init/hw/init.zygote64.rc" "${ZYGOTE_LAUNCH_RC}"
@@ -386,12 +391,25 @@ function generate_zygote_launch_rc()
     done
 
     # provide a vr config file
-    println "    setenv VR_PATHREG_OVERRIDE /vendor/etc/openvrpaths.vrpath" >> "${ZYGOTE_LAUNCH_RC}"
-    podman_mount_entry "${LEPTON_DIR}/openvrpaths.vrpath" "/vendor/etc/openvrpaths.vrpath" ro,U
+    podman_mount_entry_optional "$HOME/.config/openvr/openvrpaths.vrpath" "$HOME/.config/openvr/openvrpaths.vrpath" ro,U
+    if ! is_sysbake; then
+        # Now mount the apps compat mount paths
+        # This includes for example the SteamVR directory
+        IFS=: read -ra compat_mounts <<< "${STEAM_COMPAT_MOUNTS:-}"
+        for compat_mount in "${compat_mounts[@]}"; do
+            podman_mount_entry "${compat_mount}" "${compat_mount}" rw
+        done
 
-    # tell vrclient where to find our steamvr config/logs
-    println "    setenv VR_CONFIG_PATH /data/steamvr/config" >> "${ZYGOTE_LAUNCH_RC}"
-    println "    setenv VR_LOG_PATH /data/steamvr/logs" >> "${ZYGOTE_LAUNCH_RC}"
+        if [[ -n "$(which steamvr)" ]]; then
+            podman_mount_entry "$(steamvr path)" "$(steamvr path)" rw
+            # vrclient.so hardcodes this path
+            podman_mount_entry "$(steamvr path)" "/data/steamvr/runtime" rw
+            podman_mount_entry "$(steamvr logpath)" "$(steamvr logpath)" rw
+            podman_mount_entry "$(steamvr configpath)" "$(steamvr configpath)" ro
+        fi
+    fi
+
+    podman_mount_entry "${STEAM_LOG_PATH}" "${STEAM_LOG_PATH}" rw
 
     # Tell Mesa where to slurp up its shaders
     #println "    setenv MESA_SHADER_CACHE_DIR /data/shaders" >> "${ZYGOTE_LAUNCH_RC}"
@@ -518,15 +536,6 @@ function setup_podman_mounts()
     touch "${DATA_OVERLAY}/misc/ethernet/ipconfig.txt"
     podman_mount_entry "$(prefix)/ipconfig.txt" "/data/misc/ethernet/ipconfig.txt" rw
     podman_mount_entry "$(prefix)/ipconfig.txt" "/data/misc/apexdata/com.android.tethering/misc/ethernet/ipconfig.txt" rw
-
-    if ! is_sysbake; then
-        mkdir -p "${DATA_OVERLAY}/steamvr/runtime"
-        # Add our steamvr build into `/data/steamvr/runtime` and `/data/steamvr/config`
-        podman_mount_entry "$(steamvr path)" "/data/steamvr/runtime" rw
-
-        podman_mount_entry "${STEAM_LOG_PATH}" "/data/steamvr/logs" rw
-        podman_mount_entry "$(steamvr configpath)" "/data/steamvr/config" ro
-    fi
 
     # Mount shader cache directory
     if [[ -d "${STEAM_COMPAT_SHADER_PATH:-}" ]]; then
