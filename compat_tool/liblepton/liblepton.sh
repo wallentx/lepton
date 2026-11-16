@@ -152,7 +152,9 @@ function setup_container()
     # assume it'll always be relative to `XDG_RUNTIME_DIR`.  This will require
     # a change to `mounting.sh` as well.
     if [[ ! -e "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]]; then
-        if [[ -e "/home/$(id -u -n)/xdg/${WAYLAND_DISPLAY}" ]]; then
+        if [[ -z "${GAMESCOPE_WAYLAND_DISPLAY:-}" ]] && [[ -e "${XDG_RUNTIME_DIR}/wayland-0" ]]; then
+            export WAYLAND_DISPLAY="wayland-0"
+        elif [[ -e "/home/$(id -u -n)/xdg/${WAYLAND_DISPLAY}" ]]; then
             export XDG_RUNTIME_DIR="/home/$(id -u -n)/xdg"
         fi
     fi
