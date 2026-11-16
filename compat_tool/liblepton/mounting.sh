@@ -517,6 +517,7 @@ function setup_podman_mounts()
     mkdir -p "${DATA_OVERLAY}/misc/ethernet"
     touch "${DATA_OVERLAY}/misc/ethernet/ipconfig.txt"
     podman_mount_entry "$(prefix)/ipconfig.txt" "/data/misc/ethernet/ipconfig.txt" rw
+    podman_mount_entry "$(prefix)/ipconfig.txt" "/data/misc/apexdata/com.android.tethering/misc/ethernet/ipconfig.txt" rw
 
     if ! is_sysbake; then
         mkdir -p "${DATA_OVERLAY}/steamvr/runtime"
