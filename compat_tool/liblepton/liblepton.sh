@@ -15,6 +15,12 @@ STEAMAPPS_PATH="${STEAM_PATH}/steamapps"
 APK_AUTO_INSTALL_DIR="${HOME}/lepton_auto_install_apks"
 
 ADB="/usr/lib/android-sdk/platform-tools/adb"
+if [[ ! -e "${ADB}" ]]; then
+    ADB="$(which adb)"
+    if [[ ! -e "${ADB}" ]]; then
+        println "ERROR: adb not found."
+    fi
+fi
 
 MDNS_PUBLISH_PATH="${LEPTON_DIR}/mdns_publisher/bin/lepton-mdns-publish"
 
