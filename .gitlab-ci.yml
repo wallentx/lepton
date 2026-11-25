@@ -157,7 +157,7 @@ prepare-rootfs-14-job:
 # (Can be dropped if/when the runners support binderfs)
 pre-sysbake-job:
   stage: build
-  image: debian:bookworm
+  image: debian:trixie
   script: |
     sed -i -e "s|Types\(.\) deb|Types\1 deb deb-src|g" /etc/apt/sources.list.d/debian.sources
     apt update
