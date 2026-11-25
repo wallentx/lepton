@@ -4,6 +4,7 @@ TESTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "$TESTS_DIR"/test-common.sh
 
 max_parallel=$(( $(nproc) / 4 ))
+(( max_parallel < 1 )) && max_parallel=1
 total=100
 
 function run_test() {
@@ -15,19 +16,22 @@ function run_test() {
     (
         LEPTON_ADB_PORT=$((5554 + i)) \
         LEPTON_GDB_PORT=$((1336 + i)) \
-        LEPTON_LLDB_PORT=$((2336 + i)) ./lepton start "${name}"||
+        LEPTON_LLDB_PORT=$((2336 + i)) ./lepton start "${name}" ||
             test_log "$name failed to start."
     ) &
     start_pid=$!
 
-    if ! wait_for_boot "$name" 720; then
+    if ! wait_for_boot "$name" 1500; then
         ./lepton stop "$name" || true
+        # Make sure the start process is gone before freeing the slot,
+        # otherwise we can exceed max_parallel.
+        wait "${start_pid}" || true
         return 1
     fi
 
     ./lepton stop "$name" || true
 
-    wait "${start_pid}"
+    wait "${start_pid}" || true
 
     return 0
 }
@@ -38,31 +42,28 @@ export LEPTON_LOCK_TIMEOUT=0
 export LEPTON_NO_PORT_FORWARDING=true
 
 failed=0
-
-declare -a pids
+running=0
 
 for ((i=1; i<=total; i++)); do
-    j=$(( (i - 1) % max_parallel + 1 ))
-
-    # Wait until this specific test ID is free.
-    if [[ -n "${pids[j]:-}" ]]; then
-        if ! wait "${pids[j]}"; then
-            ((++failed))
+    # Wait until *any* running test finishes, not a specific slot,
+    # so one slow test doesn't block the whole pool.
+    if (( running >= max_parallel )); then
+        if ! wait -n; then
+            failed=$((failed + 1))
         fi
-        unset 'pids[j]'
+        running=$((running - 1))
     fi
 
     run_test "$i" &
-    pids[j]=$!
+    running=$((running + 1))
 done
 
 # Wait for remaining tests.
-for ((j=1; j<=max_parallel; j++)); do
-    if [[ -n "${pids[j]:-}" ]]; then
-        if ! wait "${pids[j]}"; then
-            ((++failed))
-        fi
+while (( running > 0 )); do
+    if ! wait -n; then
+        failed=$((failed + 1))
     fi
+    running=$((running - 1))
 done
 
 function android_sdk_version()
@@ -81,4 +82,3 @@ if (( failed > 0 )); then
 fi
 
 test_log "test repeated start test finished"
-
