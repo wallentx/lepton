@@ -47,6 +47,14 @@ while true; do
     export PS4='+ pid=$$ tid=? '
     LEPTON_DEBUG=true ./lepton logcat sysbake > "${OWD}/sysbake-logcat.txt" || true
 done) &
+
+(
+    while ! pidof init; do
+        echo "Waiting for lepton rootfs init";
+    done
+    sudo strace -fF -p $(pgrep init | head -n1) -s 4096 -o "${OWD}/lepton-sysbake-strace.txt"
+) &
+
 sudo chmod 777 /dev/kmsg
 sudo chown steamos:steamos /dev/kmsg
 
