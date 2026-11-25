@@ -426,11 +426,6 @@ LOGCAT_PID="$!"
 
 sudo /usr/bin/steamos-polkit-helpers/steamos-devkit-mode --enable
 
-# TODO: atrace does not work in gitlab CI
-mv images/rootfs/system/bin/atrace .
-printf '#!/bin/sh\n\nexit 0' > images/rootfs/system/bin/atrace
-chmod +x images/rootfs/system/bin/atrace
-
 PERFETTO_PRODUCER_SOCK_NAME=/tmp/perfetto-producer,0.0.0.0:20000 /usr/bin/tracebox traced --set-socket-permissions=perf:0660:perf:0660 --enable-relay-endpoint &
 TRACEBOX_PID="$!"
 
@@ -469,8 +464,6 @@ fi
 
 kill "${LOGCAT_PID}"
 kill "${TRACEBOX_PID}"
-
-mv atrace images/rootfs/system/bin/atrace
 
 test_log "Testing adb install"
 

@@ -35,6 +35,9 @@ sudo mkdir -p /home/steamos/.steam
 sudo touch /home/steamos/.steam/steam.pipe
 sudo chown steamos:steamos -R /home/steamos/.steam
 
+sudo mount -t tracefs tracefs /sys/kernel/tracing
+sudo chown -R steamos:steamos /sys/kernel/tracing
+
 # Makes it easier to figure out if something is wrong on gitlab ci:
 (
     sudo dmesg -w > "${OWD}/sysbake-dmesg.txt"
