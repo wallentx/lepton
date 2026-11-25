@@ -40,6 +40,7 @@ function run_test() {
 # But it means we need to fix ports ourselves
 export LEPTON_LOCK_TIMEOUT=0
 export LEPTON_NO_PORT_FORWARDING=true
+export LEPTON_PS_PACKAGES=false
 
 failed=0
 running=0

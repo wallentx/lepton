@@ -41,12 +41,25 @@ function print_screen()
 
 function container_state()
 {
-    # Prints "green", "red" or nothing (not listed)
-    local line
-    line="$(./lepton ps 2>/dev/null | grep -F "$1 ")"
-    if [[ "$line" == *"${_GREEN}"* ]]; then echo green
-    elif [[ "$line" == *"${_RED}"* ]]; then echo red
+    local s="" n pid
+    for n in "lepton-$1" "lepton-steamlaunch-$1"; do
+        s="$(podman container inspect -f '{{.State.Status}}|{{index .Config.Labels "lepton_pid"}}' "$n" 2>/dev/null || true)"
+        [[ -n "$s" ]] && break
+    done
+
+    pid="${s#*|}"
+    s="${s%%|*}"
+
+    # Same rule as lepton ps: Created only counts while its lepton process is alive
+    if [[ "$s" == created && ! ( -n "$pid" && -d "/proc/$pid" ) ]]; then
+        s="dead"
     fi
+
+    case "$s" in
+        running|created) echo green ;;
+        "")              ;;            # neither exists: not created yet / gone
+        *)               echo red ;;
+    esac
 }
 
 function wait_for_start()
@@ -66,26 +79,23 @@ function wait_for_start()
 
 function wait_for_boot()
 {
-    local max_time="${2:-30}"
-    local end=$((SECONDS + max_time))   # one deadline for start + boot
+    local name="$1" max_time="${2:-30}"
+    local end=$((SECONDS + max_time))
 
-    wait_for_start "$1" "${max_time}" || return 1
-
-    local state
-    while [[ "$(./lepton run "$1" getprop sys.boot_completed 2>/dev/null | tr -d '\r[:space:]')" != "1" ]]; do
+    until [[ "$(container_state "$name")" == "green" ]]; do
         if (( SECONDS >= end )); then
-            test_log "container $1 failed to reach boot complete within ${max_time} seconds."
+            test_log "container $name failed to spin up within ${max_time} seconds."
             return 1
         fi
-        state="$(container_state "$1")"
-        if [[ "$state" != "green" ]]; then
-            test_log "container $1 failed to reach boot completed state (state: ${state:-gone})."
-            return 1
-        fi
-        test_log "Waiting for $1 container to boot."
-        sleep 1
+        sleep 0.2
     done
-    return 0
+
+    local left=$(( end - SECONDS )); (( left < 1 )) && left=1
+    if ! timeout -k 5 "$left" ./lepton run "$name" sh -c \
+        'until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 0.2; done' 2>/dev/null; then
+        test_log "container $name failed to reach boot complete within ${max_time} seconds."
+        return 1
+    fi
 }
 
 function wait_for_app()
