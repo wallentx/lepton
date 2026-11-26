@@ -743,34 +743,48 @@ function is_context_live()
 
 function list_containers()
 {
-    for CONTEXT in $(list_contexts); do
-        if is_context_live "${CONTEXT}"; then
-            IP=$(podman_ip "${CONTEXT}" || print "<?>")
-            PACKAGES="$(LEPTON_CONTEXT="${CONTEXT}" podman_attach_no_context_check pm list packages -3 2>/dev/null |grep -o "package:.*" || true)"
+    local NAME STATUS LEPTON_PID
+    # '|' instead of tab: tabs count as whitespace for `read`, so empty fields would collapse and shift the columns
+    local FMT='{{.Names}}|{{.Status}}|{{index .Labels "IP"}}|{{index .Labels "adb_port"}}|{{index .Labels "gdb_port"}}|{{index .Labels "lldb_port"}}|{{index .Labels "lepton_pid"}}'
+
+    # Read the list on fd 3 so commands inside the loop (podman exec -i) can't consume it from stdin
+    while IFS='|' read -r -u 3 NAME STATUS IP ADB_PORT GDB_PORT LLDB_PORT LEPTON_PID; do
+        CONTEXT="${NAME//lepton-/}"
+
+        # A container stuck in Created whose lepton process is gone will never start
+        if [[ "${STATUS}" == Created* && ! ( -n "${LEPTON_PID}" && -d "/proc/${LEPTON_PID}" ) ]]; then
+            STATUS="Dead"
+        fi
+
+        if [[ "${STATUS}" != Up* && "${STATUS}" != Created* ]]; then
+            println "${_RED}${CONTEXT}${_PLAIN}"
+            continue
+        fi
+
+        [[ -n "${IP}" ]] || IP="<?>"
+
+        APP_STR=""
+        # Only query packages once the container is actually running (exec fails on Created)
+        if [[ "${LEPTON_PS_PACKAGES:-true}" == true && "${STATUS}" == Up* ]]; then
+            PACKAGES="$(LEPTON_CONTEXT="${CONTEXT}" podman_attach_no_context_check pm list packages -3 </dev/null 2>/dev/null |grep -o "package:.*" || true)"
             if [[ -n "${PACKAGES}" ]]; then
                 APP_STR="packages: $(println "${PACKAGES}" | sed "s/package://g" | sed -z 's/\r/,/g' | sed "s/,$//g")"
-            else
-                APP_STR=""
             fi
-            ADB_PORT="$(adb_port "${CONTEXT}")"
-            GDB_PORT="$(gdb_port "${CONTEXT}")"
-            LLDB_PORT="$(lldb_port "${CONTEXT}")"
-            IP_STR="(${IP}, "
-            if [[ -n "${ADB_PORT}" ]]; then
-                IP_STR+="adb on ${ADB_PORT}, "
-            fi
-            if [[ -n "${GDB_PORT}" ]]; then
-                IP_STR+="gdb on ${GDB_PORT}, "
-            fi
-            if [[ -n "${LLDB_PORT}" ]]; then
-                IP_STR+="lldb on ${LLDB_PORT}, "
-            fi
-            IP_STR+="${APP_STR})"
-            println "${_GREEN}${CONTEXT} ${IP_STR}${_PLAIN}"
-        else
-            println "${_RED}${CONTEXT}${_PLAIN}"
         fi
-    done
+
+        IP_STR="(${IP}, "
+        if [[ -n "${ADB_PORT}" ]]; then
+            IP_STR+="adb on ${ADB_PORT}, "
+        fi
+        if [[ -n "${GDB_PORT}" ]]; then
+            IP_STR+="gdb on ${GDB_PORT}, "
+        fi
+        if [[ -n "${LLDB_PORT}" ]]; then
+            IP_STR+="lldb on ${LLDB_PORT}, "
+        fi
+        IP_STR+="${APP_STR})"
+        println "${_GREEN}${CONTEXT} ${IP_STR}${_PLAIN}"
+    done 3< <(podman ps -a --filter label=lepton=true --format "${FMT}")
 }
 
 function cleanup_container()
