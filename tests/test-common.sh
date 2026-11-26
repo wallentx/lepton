@@ -81,6 +81,7 @@ function wait_for_boot()
 {
     local name="$1" max_time="${2:-30}"
     local end=$((SECONDS + max_time))
+    local left
 
     until [[ "$(container_state "$name")" == "green" ]]; do
         if (( SECONDS >= end )); then
@@ -90,12 +91,24 @@ function wait_for_boot()
         sleep 0.2
     done
 
-    local left=$(( end - SECONDS )); (( left < 1 )) && left=1
-    if ! timeout -k 5 "$left" ./lepton run "$name" sh -c \
-        'until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 0.2; done' 2>/dev/null; then
-        test_log "container $name failed to reach boot complete within ${max_time} seconds."
-        return 1
-    fi
+    # "green" includes Created, where `lepton run` is still refused,
+    # so a fast failure here means "not running yet": retry until the deadline.
+    while :; do
+        left=$(( end - SECONDS ))
+        if (( left <= 0 )); then
+            test_log "container $name failed to reach boot complete within ${max_time} seconds."
+            return 1
+        fi
+        if timeout -k 5 "$left" ./lepton run "$name" sh -c \
+            'until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 0.2; done' 2>/dev/null; then
+            return 0
+        fi
+        if [[ "$(container_state "$name")" == "red" ]]; then
+            test_log "container $name died while waiting for boot."
+            return 1
+        fi
+        sleep 0.2
+    done
 }
 
 function wait_for_app()
