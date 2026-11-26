@@ -3,6 +3,6 @@
     "runtime": {
        "name": "steamvr",
        "VALVE_runtime_is_steamvr" : true,
-       "library_path": "/data/steamvr/runtime/bin/androidarm64/vrclient.so"
+       "library_path": "bin/androidarm64/vrclient.so"
     }
 }

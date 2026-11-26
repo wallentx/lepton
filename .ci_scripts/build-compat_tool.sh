@@ -17,6 +17,10 @@ pushd compat_tool/liblepton/mdns_publisher
 make
 popd
 
+pushd compat_tool/liblepton/binderctl
+make
+popd
+
 mkdir -p install
 pushd install
 
@@ -32,7 +36,6 @@ cp -ra ${PROJECT_DIR}/LICENSES .
 mkdir -p liblepton
 cp -a ${PROJECT_DIR}/compat_tool/liblepton/*.sh liblepton
 cp -a ${PROJECT_DIR}/compat_tool/liblepton/lepton.seccomp.json liblepton
-cp -a ${PROJECT_DIR}/compat_tool/liblepton/openvrpaths.vrpath liblepton
 cp -a ${PROJECT_DIR}/compat_tool/liblepton/soreplacements.txt liblepton
 cp -ra ${PROJECT_DIR}/compat_tool/liblepton/perfetto liblepton
 mkdir -p images
@@ -43,8 +46,7 @@ install -m755 ${PROJECT_DIR}/compat_tool/liblepton/apk_extractor/bin/apk-info-ex
 mkdir -p liblepton/mdns_publisher/bin
 install -m755 ${PROJECT_DIR}/compat_tool/liblepton/mdns_publisher/bin/lepton-mdns-publish liblepton/mdns_publisher/bin/lepton-mdns-publish
 mkdir -p liblepton/images/rootfs_overlay/vendor/bin
-
-
+install -m755 ${PROJECT_DIR}/compat_tool/liblepton/binderctl/bin/binderctl liblepton/images/rootfs_overlay/vendor/bin/binderctl
 echo "${LEPTON_VERSION}" > version.txt
 
 tar --zstd -cf "${PROJECT_DIR}"/compat_tool.tar.zst .
