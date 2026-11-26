@@ -35,6 +35,9 @@ sudo mkdir -p /home/steamos/.steam
 sudo touch /home/steamos/.steam/steam.pipe
 sudo chown steamos:steamos -R /home/steamos/.steam
 
+sudo mount -t tracefs tracefs /sys/kernel/tracing
+sudo chown -R steamos:steamos /sys/kernel/tracing
+
 # Makes it easier to figure out if something is wrong on gitlab ci:
 (
     sudo dmesg -w > "${OWD}/sysbake-dmesg.txt"
@@ -47,6 +50,14 @@ while true; do
     export PS4='+ pid=$$ tid=? '
     LEPTON_DEBUG=true ./lepton logcat sysbake > "${OWD}/sysbake-logcat.txt" || true
 done) &
+
+(
+    while ! pidof init; do
+        echo "Waiting for lepton rootfs init";
+    done
+    sudo strace -fF -p $(pgrep init | head -n1) -s 4096 -o "${OWD}/lepton-sysbake-strace.txt"
+) &
+
 sudo chmod 777 /dev/kmsg
 sudo chown steamos:steamos /dev/kmsg
 

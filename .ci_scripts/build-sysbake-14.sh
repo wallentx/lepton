@@ -38,6 +38,9 @@ sudo chown steamos:steamos -R /home/steamos/.steam
 sudo chmod 777 /dev/kmsg
 sudo chown steamos:steamos /dev/kmsg
 
+sudo mount -t tracefs tracefs /sys/kernel/tracing
+sudo chown -R steamos:steamos /sys/kernel/tracing
+
 sudo mkdir -p /sys/fs/cgroup
 sudo mount -t cgroup2 none /sys/fs/cgroup
 sudo mkdir -p /sys/fs/cgroup/lepton-sysbake

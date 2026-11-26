@@ -49,6 +49,9 @@ export LEPTON_FORCE_SOFTWARE=true
 
 total=$(grep '^total=' "${OWD}/tests/test-repeated-start.sh" | cut -d= -f2-)
 
+sudo mount -t tracefs tracefs /sys/kernel/tracing
+sudo chown -R steamos:steamos /sys/kernel/tracing
+
 sudo mkdir -p /sys/fs/cgroup
 sudo mount -t cgroup2 none /sys/fs/cgroup
 
